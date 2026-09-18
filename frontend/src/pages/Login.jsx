@@ -4,19 +4,20 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bean, Loader2, Lock } from "lucide-react";
+import { Bean, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const { login, error } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const ok = await login(email, password);
+    const ok = await login(email.trim().toLowerCase(), password.trim());
     setLoading(false);
     if (ok) navigate("/");
   };
@@ -65,22 +66,41 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="username"
                 className="mt-2 h-14 text-lg bg-white border-2 border-[#8C6D58] focus-visible:ring-4 focus-visible:ring-[#8C4A27]/30"
                 placeholder="you@example.com"
               />
             </div>
             <div>
               <Label htmlFor="password" className="text-lg font-semibold text-[#24140E]">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                data-testid="login-password-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="mt-2 h-14 text-lg bg-white border-2 border-[#8C6D58] focus-visible:ring-4 focus-visible:ring-[#8C4A27]/30"
-                placeholder="••••••••"
-              />
+              <div className="relative mt-2">
+                <Input
+                  id="password"
+                  type={showPass ? "text" : "password"}
+                  data-testid="login-password-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="current-password"
+                  className="h-14 text-lg pr-14 bg-white border-2 border-[#8C6D58] focus-visible:ring-4 focus-visible:ring-[#8C4A27]/30"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  data-testid="toggle-password-visibility"
+                  onClick={() => setShowPass((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C4638] hover:text-[#8C4A27] p-1"
+                  aria-label={showPass ? "Hide password" : "Show password"}
+                >
+                  {showPass ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                </button>
+              </div>
             </div>
 
             {error && (
