@@ -72,7 +72,8 @@ def set_auth_cookies(response: Response, access: str, refresh: str):
 
 def clean_user(u: dict) -> dict:
     return {"id": u["id"], "email": u["email"], "name": u.get("name", ""), "role": u.get("role", "staff"),
-            "active": u.get("active", True), "created_at": u.get("created_at")}
+            "active": u.get("active", True), "created_at": u.get("created_at"),
+            "pin_set": bool(u.get("pin_hash"))}
 
 
 async def get_current_user(request: Request) -> dict:
@@ -194,6 +195,15 @@ class MeUpdate(BaseModel):
     name: str
 
 
+class PinBody(BaseModel):
+    pin: str
+
+
+class SetPinBody(BaseModel):
+    pin: str
+    password: str
+
+
 class CaretakerRecordInput(BaseModel):
     note: str
 
@@ -262,6 +272,46 @@ async def update_me(body: MeUpdate, user: dict = Depends(get_current_user)):
     await db.users.update_one({"id": user["id"]}, {"$set": {"name": name}})
     fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     return clean_user(fresh)
+
+
+def validate_pin_format(pin: str):
+    if not (pin.isdigit() and 4 <= len(pin) <= 6):
+        raise HTTPException(status_code=400, detail="PIN must be 4 to 6 digits")
+    if len(set(pin)) == 1 or pin in ("1234", "12345", "123456", "0000", "1111"):
+        raise HTTPException(status_code=400, detail="Please choose a less obvious PIN")
+
+
+@api_router.put("/auth/pin")
+async def set_pin(body: SetPinBody, user: dict = Depends(get_current_user)):
+    if not verify_password(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Your account password is incorrect")
+    validate_pin_format(body.pin)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"pin_hash": hash_password(body.pin), "pin_set_at": iso_now()}})
+    await db.pin_attempts.delete_one({"user_id": user["id"]})
+    return {"pin_set": True}
+
+
+@api_router.post("/auth/pin/verify")
+async def verify_pin(body: PinBody, user: dict = Depends(get_current_user)):
+    uid = user["id"]
+    now = now_utc()
+    attempt = await db.pin_attempts.find_one({"user_id": uid})
+    if attempt and attempt.get("locked_until"):
+        locked_until = datetime.fromisoformat(attempt["locked_until"])
+        if locked_until > now:
+            raise HTTPException(status_code=429, detail="Too many wrong PINs. Please wait a few minutes.")
+    fresh = await db.users.find_one({"id": uid})
+    if not fresh or not fresh.get("pin_hash"):
+        raise HTTPException(status_code=400, detail="No PIN is set on this account")
+    if verify_password(body.pin, fresh["pin_hash"]):
+        await db.pin_attempts.delete_one({"user_id": uid})
+        return {"ok": True}
+    count = (attempt.get("count", 0) if attempt else 0) + 1
+    update = {"count": count, "user_id": uid, "last_failed": iso_now()}
+    if count >= 5:
+        update["locked_until"] = (now + timedelta(minutes=5)).isoformat()
+    await db.pin_attempts.update_one({"user_id": uid}, {"$set": update}, upsert=True)
+    raise HTTPException(status_code=401, detail="Incorrect PIN")
 
 
 @api_router.post("/auth/refresh")
@@ -701,41 +751,44 @@ async def set_rate(body: RateInput, user: dict = Depends(require_admin)):
 
 
 @api_router.get("/cocoa-rate/live")
-async def get_live_rate(user: dict = Depends(get_current_user)):
-    key = os.environ.get("ALPHA_VANTAGE_KEY", "").strip()
-    # Serve cache if fresh (< 6 hours)
+async def get_live_rate(user: dict = Depends(require_admin)):
     cache = await db.settings.find_one({"_id": "cocoa_live"})
     if cache and cache.get("fetched_at"):
         fetched = datetime.fromisoformat(cache["fetched_at"])
         if fetched > now_utc() - timedelta(hours=6):
             return {**cache["data"], "source": "cache"}
-    if not key:
-        if cache:
-            return {**cache["data"], "source": "cache"}
-        return {"available": False, "message": "Live global rate source not configured.",
-                "usd_per_tonne": None, "usd_per_kg": None, "date": None, "source": "unavailable"}
     try:
-        async with httpx.AsyncClient(timeout=15) as hc:
-            resp = await hc.get("https://www.alphavantage.co/query",
-                                params={"function": "COCOA", "interval": "monthly", "apikey": key})
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                 "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"}
+        async with httpx.AsyncClient(timeout=15, headers=headers) as hc:
+            resp = await hc.get("https://query1.finance.yahoo.com/v8/finance/chart/CC=F",
+                                params={"range": "1y", "interval": "1mo"})
             j = resp.json()
-        data_points = j.get("data", [])
-        latest = next((d for d in data_points if d.get("value") not in (".", None)), None)
-        if not latest:
-            raise ValueError("No data returned")
-        usd_tonne = float(latest["value"])
-        valid = [d for d in data_points if d.get("value") not in (".", None)]
-        recent = valid[:12]
-        trend = [{"date": d["date"], "value": round(float(d["value"]) / 1000, 3)} for d in recent][::-1]
+        result0 = j["chart"]["result"][0]
+        meta = result0.get("meta", {})
+        timestamps = result0.get("timestamp", []) or []
+        closes = (result0.get("indicators", {}).get("quote", [{}])[0].get("close", []) or [])
+        points = []
+        for ts, cl in zip(timestamps, closes):
+            if cl is None:
+                continue
+            d = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m")
+            points.append({"date": d, "value": round(cl / 1000, 3)})
+        cur_tonne = meta.get("regularMarketPrice")
+        if cur_tonne is None:
+            cur_tonne = next((c for c in reversed(closes) if c is not None), None)
+        if cur_tonne is None:
+            raise ValueError("No price data returned")
+        trend = points[-12:]
         change_pct, direction = None, "flat"
-        if len(recent) >= 2:
-            cur, prev = float(recent[0]["value"]), float(recent[1]["value"])
-            if prev:
-                change_pct = round((cur - prev) / prev * 100, 1)
-                direction = "up" if cur > prev else "down" if cur < prev else "flat"
-        result = {"available": True, "usd_per_tonne": round(usd_tonne, 2),
-                  "usd_per_kg": round(usd_tonne / 1000, 4), "date": latest["date"],
-                  "name": j.get("name", "Global Cocoa Price"), "unit": j.get("unit", "USD per metric ton"),
+        if len(trend) >= 2 and trend[-2]["value"]:
+            cur, prev = trend[-1]["value"], trend[-2]["value"]
+            change_pct = round((cur - prev) / prev * 100, 1)
+            direction = "up" if cur > prev else "down" if cur < prev else "flat"
+        result = {"available": True, "usd_per_tonne": round(cur_tonne, 2),
+                  "usd_per_kg": round(cur_tonne / 1000, 4),
+                  "date": (trend[-1]["date"] if trend else datetime.now(timezone.utc).strftime("%Y-%m")),
+                  "name": "ICE Cocoa Futures (CC=F)", "unit": "USD per metric ton",
                   "trend": trend, "change_pct": change_pct, "direction": direction}
         await db.settings.update_one({"_id": "cocoa_live"},
                                      {"$set": {"data": result, "fetched_at": iso_now()}}, upsert=True)
@@ -744,7 +797,7 @@ async def get_live_rate(user: dict = Depends(get_current_user)):
         logger.warning(f"Live cocoa rate fetch failed: {e}")
         if cache:
             return {**cache["data"], "source": "cache"}
-        return {"available": False, "message": "Could not reach the live rate source right now.",
+        return {"available": False, "message": "Could not reach the live market right now. Please try again shortly.",
                 "usd_per_tonne": None, "usd_per_kg": None, "date": None, "source": "error"}
 
 
@@ -797,6 +850,7 @@ async def startup():
     await db.users.create_index("id", unique=True)
     await db.customers.create_index("customer_id")
     await db.customers.create_index("id", unique=True)
+    await db.pin_attempts.create_index("user_id", unique=True)
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").strip().lower()
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     existing = await db.users.find_one({"email": admin_email})

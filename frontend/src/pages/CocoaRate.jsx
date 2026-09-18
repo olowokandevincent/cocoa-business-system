@@ -37,8 +37,10 @@ export default function CocoaRate() {
 
   useEffect(() => {
     load();
-    api.get("/cocoa-rate/live").then((r) => setLive(r.data)).catch(() => setLive({ available: false }));
-  }, []);
+    if (user?.role === "admin") {
+      api.get("/cocoa-rate/live").then((r) => setLive(r.data)).catch(() => setLive({ available: false }));
+    }
+  }, [user]);
 
   const save = async (e) => {
     e.preventDefault();
@@ -64,7 +66,9 @@ export default function CocoaRate() {
           <h1 className="font-heading text-4xl font-bold text-[#3B1E10] flex items-center gap-3">
             <TrendingUp className="w-9 h-9 text-[#8C4A27]" /> Cocoa Rate
           </h1>
-          <p className="text-lg text-[#5C4638] mt-1">Private buying rate and live global reference.</p>
+          <p className="text-lg text-[#5C4638] mt-1">
+            {user?.role === "admin" ? "Your private buying rate and the live global market." : "Buying rate set by the owner — buy cocoa at this price."}
+          </p>
         </div>
         {user?.role === "admin" && (
           <Dialog open={open} onOpenChange={setOpen}>
@@ -114,7 +118,8 @@ export default function CocoaRate() {
           )}
         </Card>
 
-        {/* Live global reference */}
+        {/* Live global reference (owner only) */}
+        {user?.role === "admin" ? (
         <Card className="p-8 bg-white border-2 border-[#8C6D58]/30 rounded-xl" data-testid="live-rate-card">
           <div className="flex items-center gap-2 text-[#5C4638] mb-2">
             {live?.available ? <Globe className="w-5 h-5 text-[#1E5E3A]" /> : <WifiOff className="w-5 h-5" />}
@@ -180,6 +185,19 @@ export default function CocoaRate() {
             </div>
           )}
         </Card>
+        ) : (
+          <Card className="p-8 bg-[#F4ECE1] border-2 border-[#8C6D58]/40 rounded-xl flex flex-col justify-center" data-testid="staff-rate-note">
+            <div className="flex items-center gap-2 text-[#5C4638] mb-2">
+              <Globe className="w-5 h-5" />
+              <span className="text-base font-semibold uppercase tracking-wide">Live Global Market</span>
+            </div>
+            <p className="text-xl font-bold text-[#24140E]">Owner only</p>
+            <p className="text-[#5C4638] mt-1">
+              The live world market price is private to the owner. Buy cocoa at{" "}
+              <span className="font-bold text-[#8C4A27]">{rate.rate ? naira(rate.rate) + "/kg" : "the owner's rate"}</span> shown on the left.
+            </p>
+          </Card>
+        )}
 
         {/* Your rate movement chart */}
         <Card className="p-6 bg-white border-2 border-[#8C6D58]/30 rounded-xl lg:col-span-2" data-testid="rate-movement-card">

@@ -3,6 +3,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
+import { LockProvider } from "@/context/LockContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import Login from "@/pages/Login";
@@ -29,6 +30,7 @@ function App() {
   return (
     <div className="App">
       <AuthProvider>
+        <LockProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -40,6 +42,7 @@ function App() {
             <Route path="/staff" element={<Shell adminOnly><Staff /></Shell>} />
           </Routes>
         </BrowserRouter>
+        </LockProvider>
         <Toaster position="top-right" richColors />
       </AuthProvider>
     </div>

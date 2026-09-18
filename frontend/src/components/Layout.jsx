@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, Package, TrendingUp, UserCog, LogOut, Bean, Menu, X,
 } from "lucide-react";
 import { useState } from "react";
+import { PinControls } from "@/components/PinControls";
 
 const NAV = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard, testid: "nav-dashboard" },
@@ -68,6 +69,9 @@ export function Layout({ children }) {
                   {user?.role === "admin" ? "Owner" : "Staff"}
                 </div>
               </div>
+              <div className="hidden lg:flex items-center gap-2">
+                <PinControls />
+              </div>
               <button
                 onClick={doLogout}
                 data-testid="logout-button"
@@ -116,6 +120,7 @@ export function Layout({ children }) {
                 </Link>
               );
             })}
+            <PinControls variant="mobile" />
             <button
               onClick={doLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-lg font-semibold text-[#E3D5C5]"

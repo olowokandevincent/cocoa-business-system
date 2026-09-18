@@ -15,7 +15,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Package, Plus, Loader2, Scale, TriangleAlert, CircleCheck, Info, Trash2, Truck, MapPin,
+  Package, Plus, Loader2, Scale, TriangleAlert, CircleCheck, Info, Trash2, Truck, MapPin, Calendar, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,11 +28,12 @@ export default function CocoaRecords() {
   const [form, setForm] = useState({ bags: "", status: "unscaled", weight_kg: "", delivered_by: "", location: "", note: "" });
   const [weighOpen, setWeighOpen] = useState(null);
   const [weight, setWeight] = useState("");
+  const [date, setDate] = useState("");
 
   const load = useCallback(async () => {
     try {
       const [r, s] = await Promise.all([
-        api.get("/cocoa-records", { params: { status: filter } }),
+        api.get("/cocoa-records", { params: { status: filter, date } }),
         api.get("/cocoa-records/summary"),
       ]);
       setRecords(r.data);
@@ -40,7 +41,7 @@ export default function CocoaRecords() {
     } catch (e) {
       toast.error(apiErr(e));
     }
-  }, [filter]);
+  }, [filter, date]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -184,8 +185,8 @@ export default function CocoaRecords() {
         </div>
       )}
 
-      {/* Filter */}
-      <div className="flex gap-2 mb-4" data-testid="cocoa-filter">
+      {/* Filter + date */}
+      <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="cocoa-filter">
         {[["", "All"], ["unscaled", "Unscaled"], ["scaled", "Scaled"]].map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)} data-testid={`filter-${v || "all"}`}
             className={`h-11 px-5 rounded-lg font-semibold border-2 transition-colors ${
@@ -193,7 +194,24 @@ export default function CocoaRecords() {
             {l}
           </button>
         ))}
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <Calendar className="w-5 h-5 text-[#8C4A27]" />
+          <Input type="date" value={date} data-testid="cocoa-date-picker"
+            onChange={(e) => setDate(e.target.value)}
+            className="h-11 w-44 bg-white border-2 border-[#8C6D58]/40 text-[#24140E]" />
+          {date && (
+            <button onClick={() => setDate("")} data-testid="clear-date"
+              className="h-11 px-3 rounded-lg font-semibold border-2 border-[#8C6D58]/40 bg-white text-[#24140E] hover:border-[#8C4A27] flex items-center gap-1">
+              <X className="w-4 h-4" /> Clear
+            </button>
+          )}
+        </div>
       </div>
+      {date && (
+        <div className="text-base text-[#5C4638] mb-3" data-testid="date-filter-note">
+          Showing deliveries &amp; weighings recorded on <span className="font-bold text-[#24140E]">{date}</span>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
