@@ -88,6 +88,18 @@ export function Layout({ children }) {
 
         {open && (
           <nav className="lg:hidden border-t border-[#4d2a17] px-4 py-3 space-y-1" data-testid="mobile-menu">
+            <div className="relative rounded-xl overflow-hidden mb-3 h-28">
+              <img
+                src="https://images.unsplash.com/photo-1743252878695-367d69dc87a8?crop=entropy&cs=srgb&fm=jpg&q=85&w=800"
+                alt="Cocoa pods"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#3B1E10] via-[#3B1E10]/50 to-transparent" />
+              <div className="relative z-10 h-full flex items-end gap-2 p-3">
+                <Bean className="w-6 h-6 text-[#D97706]" />
+                <span className="font-heading text-lg font-bold text-[#FAF5EF]">Cocoa Ledger</span>
+              </div>
+            </div>
             {links.map((n) => {
               const Icon = n.icon;
               const active = loc.pathname === n.path;

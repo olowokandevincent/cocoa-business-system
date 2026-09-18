@@ -342,6 +342,24 @@ def customer_balance(c: dict) -> float:
     return round(owed - paid, 2)
 
 
+def caretaker_balance(ct: dict) -> float:
+    owed = sum(d["amount"] for d in ct.get("debts", []))
+    paid = sum(r["amount"] for r in ct.get("repayments", []))
+    return round(owed - paid, 2)
+
+
+def caretaker_money_history(ct: dict) -> list:
+    h = []
+    for d in ct.get("debts", []):
+        h.append({"type": "debt", "amount": d["amount"], "reason": d.get("reason", ""),
+                  "date": d["date"], "by": d.get("created_by", "")})
+    for r in ct.get("repayments", []):
+        h.append({"type": "repayment", "amount": r["amount"], "note": r.get("note", ""),
+                  "date": r["date"], "by": r.get("received_by", "")})
+    h.sort(key=lambda x: x["date"], reverse=True)
+    return h
+
+
 def customer_summary(c: dict) -> dict:
     return {
         "id": c["id"], "customer_id": c["customer_id"], "full_name": c["full_name"],
@@ -377,7 +395,7 @@ async def create_customer(body: CustomerCreate, user: dict = Depends(get_current
     doc = {
         "id": str(uuid.uuid4()), "customer_id": cid, "full_name": body.full_name.strip(),
         "phone": body.phone or "", "address": body.address or "", "notes": body.notes or "",
-        "caretakers": [{**c.model_dump(), "id": str(uuid.uuid4()), "records": []} for c in body.caretakers],
+        "caretakers": [{**c.model_dump(), "id": str(uuid.uuid4()), "records": [], "debts": [], "repayments": []} for c in body.caretakers],
         "date_added": iso_now(), "debts": [], "repayments": [], "fertilizer": [],
         "created_by": user["name"],
     }
@@ -401,6 +419,9 @@ async def get_customer(customer_pk: str, user: dict = Depends(get_current_user))
                         "date": r["date"], "by": r.get("received_by", "")})
     history.sort(key=lambda x: x["date"], reverse=True)
     c["history"] = history
+    for ct in c.get("caretakers", []):
+        ct["balance"] = caretaker_balance(ct)
+        ct["money_history"] = caretaker_money_history(ct)
     return c
 
 
@@ -422,6 +443,8 @@ async def update_customer(customer_pk: str, body: CustomerUpdate, user: dict = D
             prev = existing.get(d.get("name"))
             d["id"] = prev.get("id") if prev else str(uuid.uuid4())
             d["records"] = prev.get("records", []) if prev else []
+            d["debts"] = prev.get("debts", []) if prev else []
+            d["repayments"] = prev.get("repayments", []) if prev else []
             merged.append(d)
         update["caretakers"] = merged
     if update:
@@ -471,6 +494,59 @@ async def add_caretaker_record(customer_pk: str, index: int, body: CaretakerReco
         raise HTTPException(status_code=404, detail="Caretaker not found")
     entry = {"id": str(uuid.uuid4()), "note": body.note.strip(), "date": iso_now(), "by": user["name"]}
     caretakers[index].setdefault("records", []).append(entry)
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"caretakers": caretakers}})
+    return entry
+
+
+@api_router.post("/customers/{customer_pk}/caretakers")
+async def add_caretaker(customer_pk: str, body: CaretakerModel, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    ct = {**body.model_dump(), "id": str(uuid.uuid4()), "records": [], "debts": [], "repayments": []}
+    await db.customers.update_one({"id": customer_pk}, {"$push": {"caretakers": ct}})
+    return ct
+
+
+@api_router.delete("/customers/{customer_pk}/caretakers/{index}")
+async def remove_caretaker(customer_pk: str, index: int, user: dict = Depends(require_admin)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    caretakers = c.get("caretakers", [])
+    if index < 0 or index >= len(caretakers):
+        raise HTTPException(status_code=404, detail="Caretaker not found")
+    caretakers.pop(index)
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"caretakers": caretakers}})
+    return {"message": "Caretaker removed"}
+
+
+@api_router.post("/customers/{customer_pk}/caretakers/{index}/debts")
+async def add_caretaker_debt(customer_pk: str, index: int, body: DebtInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    caretakers = c.get("caretakers", [])
+    if index < 0 or index >= len(caretakers):
+        raise HTTPException(status_code=404, detail="Caretaker not found")
+    entry = {"id": str(uuid.uuid4()), "amount": round(body.amount, 2), "reason": body.reason.strip(),
+             "date": iso_now(), "created_by": user["name"]}
+    caretakers[index].setdefault("debts", []).append(entry)
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"caretakers": caretakers}})
+    return entry
+
+
+@api_router.post("/customers/{customer_pk}/caretakers/{index}/repayments")
+async def add_caretaker_repayment(customer_pk: str, index: int, body: RepaymentInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    caretakers = c.get("caretakers", [])
+    if index < 0 or index >= len(caretakers):
+        raise HTTPException(status_code=404, detail="Caretaker not found")
+    entry = {"id": str(uuid.uuid4()), "amount": round(body.amount, 2), "note": body.note or "",
+             "date": iso_now(), "received_by": user["name"]}
+    caretakers[index].setdefault("repayments", []).append(entry)
     await db.customers.update_one({"id": customer_pk}, {"$set": {"caretakers": caretakers}})
     return entry
 
