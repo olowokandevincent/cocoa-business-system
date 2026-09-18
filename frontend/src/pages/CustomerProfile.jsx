@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Loader2, Phone, MapPin, Calendar, StickyNote, Users, Banknote, HandCoins,
-  Lock, Unlock, Save, Trash2, Plus, TrendingDown, TrendingUp,
+  Lock, Unlock, Save, Trash2, Plus, TrendingDown, TrendingUp, Sprout, MessageSquare, RotateCcw, PackageCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,6 +33,9 @@ export default function CustomerProfile() {
   const [payOpen, setPayOpen] = useState(false);
   const [debt, setDebt] = useState({ amount: "", reason: "" });
   const [pay, setPay] = useState({ amount: "", note: "" });
+  const [fertOpen, setFertOpen] = useState(false);
+  const [fert, setFert] = useState({ quantity: "", unit: "bags", note: "", value: "" });
+  const [ctRecord, setCtRecord] = useState({});
 
   const load = useCallback(async () => {
     try {
@@ -88,6 +91,43 @@ export default function CustomerProfile() {
       await api.delete(`/customers/${id}`);
       toast.success("Customer deleted");
       navigate("/customers");
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
+
+  const addFertilizer = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/customers/${id}/fertilizer`, {
+        quantity: Number(fert.quantity), unit: fert.unit, note: fert.note, value: Number(fert.value) || 0,
+      });
+      toast.success("Fertilizer collection recorded");
+      setFertOpen(false);
+      setFert({ quantity: "", unit: "bags", note: "", value: "" });
+      load();
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
+
+  const returnFertilizer = async (fid) => {
+    try {
+      await api.patch(`/customers/${id}/fertilizer/${fid}/return`, {});
+      toast.success("Fertilizer marked returned");
+      load();
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
+
+  const addCtRecord = async (i) => {
+    const note = (ctRecord[i] || "").trim();
+    if (!note) return;
+    try {
+      await api.post(`/customers/${id}/caretakers/${i}/records`, { note });
+      setCtRecord((s) => ({ ...s, [i]: "" }));
+      load();
     } catch (e) {
       toast.error(apiErr(e));
     }
@@ -167,12 +207,41 @@ export default function CustomerProfile() {
               <Users className="w-6 h-6" /> Caretakers
             </h2>
             {c.caretakers?.length ? (
-              <div className="grid sm:grid-cols-2 gap-3" data-testid="caretakers-list">
+              <div className="grid sm:grid-cols-2 gap-4" data-testid="caretakers-list">
                 {c.caretakers.map((ct, i) => (
-                  <div key={i} className="bg-[#F4ECE1] rounded-lg p-3 border border-[#E3D5C5]">
-                    <div className="font-semibold text-[#24140E]">{ct.name}</div>
-                    <div className="text-sm text-[#5C4638]">
+                  <div key={i} className="bg-[#F4ECE1] rounded-xl p-4 border border-[#E3D5C5]" data-testid={`caretaker-card-${i}`}>
+                    <div className="font-semibold text-lg text-[#24140E]">{ct.name}</div>
+                    <div className="text-sm text-[#5C4638] mb-3">
                       {ct.relationship || "Caretaker"}{ct.phone ? ` · ${ct.phone}` : ""}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#8C4A27] mb-2">
+                      <MessageSquare className="w-3.5 h-3.5" /> Short record
+                    </div>
+                    {ct.records?.length ? (
+                      <div className="space-y-1.5 mb-3 max-h-32 overflow-y-auto" data-testid={`caretaker-records-${i}`}>
+                        {ct.records.map((r, ri) => (
+                          <div key={ri} className="bg-white rounded-lg px-3 py-1.5 border border-[#E3D5C5]">
+                            <div className="text-sm text-[#24140E]">{r.note}</div>
+                            <div className="text-xs text-[#5C4638]">{fmtDateTime(r.date)} · {r.by}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-[#5C4638] mb-3 italic">No records yet.</div>
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        value={ctRecord[i] || ""}
+                        data-testid={`caretaker-record-input-${i}`}
+                        onChange={(e) => setCtRecord((s) => ({ ...s, [i]: e.target.value }))}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCtRecord(i))}
+                        placeholder="Add a short note..."
+                        className="h-10 bg-white border border-[#8C6D58] text-sm"
+                      />
+                      <Button type="button" onClick={() => addCtRecord(i)} data-testid={`add-caretaker-record-${i}`}
+                        className="h-10 px-3 bg-[#8C4A27] hover:bg-[#3B1E10] text-white shrink-0">
+                        <Plus className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -182,11 +251,86 @@ export default function CustomerProfile() {
             )}
           </Card>
 
+          {/* Fertilizer feed */}
+          <Card className="p-6 bg-white border-2 border-[#8C6D58]/30" data-testid="fertilizer-section">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-heading text-2xl font-bold text-[#1E5E3A] flex items-center gap-2">
+                  <Sprout className="w-6 h-6" /> Fertilizer Collected
+                </h2>
+                <p className="text-sm text-[#5C4638] mt-1">Separate from money owed — tracks fertilizer the customer took.</p>
+              </div>
+              <Dialog open={fertOpen} onOpenChange={setFertOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="add-fertilizer-button" className="h-11 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#FAF5EF]">
+                  <DialogHeader><DialogTitle className="font-heading text-2xl text-[#1E5E3A]">Record Fertilizer Collected</DialogTitle></DialogHeader>
+                  <form onSubmit={addFertilizer} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Quantity *"><Input type="number" step="0.1" required value={fert.quantity}
+                        data-testid="fertilizer-quantity-input" onChange={(e) => setFert({ ...fert, quantity: e.target.value })}
+                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                      <Field label="Unit"><Input value={fert.unit} data-testid="fertilizer-unit-input"
+                        onChange={(e) => setFert({ ...fert, unit: e.target.value })}
+                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                    </div>
+                    <Field label="Value (₦, optional)"><Input type="number" step="0.01" value={fert.value}
+                      data-testid="fertilizer-value-input" onChange={(e) => setFert({ ...fert, value: e.target.value })}
+                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                    <Field label="Note"><Input value={fert.note} data-testid="fertilizer-note-input"
+                      placeholder="e.g. NPK 15-15-15, for main farm" onChange={(e) => setFert({ ...fert, note: e.target.value })}
+                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                    <DialogFooter>
+                      <Button type="submit" data-testid="save-fertilizer-button"
+                        className="w-full h-12 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">Record</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {c.fertilizer?.length ? (
+              <div className="space-y-2" data-testid="fertilizer-list">
+                {c.fertilizer.map((f) => {
+                  const outstanding = (f.quantity || 0) - (f.returned || 0);
+                  return (
+                    <div key={f.id} className={`flex items-center gap-3 p-3 rounded-lg border ${f.status === "settled" ? "bg-[#eef5f0] border-[#c7e0d1]" : "bg-[#F4ECE1] border-[#E3D5C5]"}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${f.status === "settled" ? "bg-[#1E5E3A]" : "bg-[#D97706]"}`}>
+                        {f.status === "settled" ? <PackageCheck className="w-5 h-5 text-white" /> : <Sprout className="w-5 h-5 text-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-[#24140E]">
+                          {f.quantity} {f.unit} {f.note ? `— ${f.note}` : ""}
+                          {f.value ? <span className="text-[#5C4638] font-normal"> ({naira(f.value)})</span> : null}
+                        </div>
+                        <div className="text-sm text-[#5C4638]">
+                          {fmtDateTime(f.date)} · {f.by}
+                          {f.status !== "settled" && <span className="text-[#9A3412] font-semibold"> · {outstanding} {f.unit} outstanding</span>}
+                          {f.status === "settled" && <span className="text-[#1E5E3A] font-semibold"> · Returned</span>}
+                        </div>
+                      </div>
+                      {f.status !== "settled" && (
+                        <Button type="button" onClick={() => returnFertilizer(f.id)} data-testid={`return-fertilizer-${f.id}`}
+                          className="h-9 bg-[#1E5E3A] hover:bg-[#164a2d] text-white text-sm font-bold shrink-0">
+                          <RotateCcw className="w-4 h-4 mr-1" /> Mark returned
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[#5C4638]">No fertilizer collected yet.</p>
+            )}
+          </Card>
+
           {/* Debt & repayment actions */}
           <Card className="p-6 bg-white border-2 border-[#8C6D58]/30">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-base font-semibold text-[#5C4638]">Total money owed</div>
+                <div className="text-base font-semibold text-[#5C4638]">Current Owing (money)</div>
                 <div className={`font-mono font-bold text-4xl ${c.balance > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`}
                   data-testid="customer-balance">{naira(c.balance)}</div>
               </div>
@@ -242,7 +386,7 @@ export default function CustomerProfile() {
             </div>
 
             {/* History */}
-            <h3 className="font-heading text-xl font-semibold text-[#3B1E10] mt-2 mb-3">Full History</h3>
+            <h3 className="font-heading text-xl font-semibold text-[#3B1E10] mt-2 mb-3">Owing History</h3>
             {c.history?.length ? (
               <div className="space-y-2" data-testid="customer-history">
                 {c.history.map((h, i) => (

@@ -10,7 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   TrendingUp, Loader2, Pencil, Globe, WifiOff, Calculator as CalcIcon, History,
+  ArrowUp, ArrowDown, Minus, LineChart as LineChartIcon,
 } from "lucide-react";
+import {
+  ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+} from "recharts";
 import { toast } from "sonner";
 
 export default function CocoaRate() {
@@ -120,14 +124,50 @@ export default function CocoaRate() {
             <Loader2 className="w-8 h-8 animate-spin text-[#8C4A27] mt-4" />
           ) : live.available ? (
             <>
-              <div className="font-heading text-5xl font-bold text-[#1E5E3A] mt-2">
-                ${live.usd_per_kg?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                <span className="text-2xl text-[#5C4638] font-normal"> /kg</span>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <div className="font-heading text-5xl font-bold text-[#1E5E3A] mt-2">
+                    ${live.usd_per_kg?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <span className="text-2xl text-[#5C4638] font-normal"> /kg</span>
+                  </div>
+                  <div className="text-lg text-[#5C4638] mt-1">
+                    ${live.usd_per_tonne?.toLocaleString()} per metric tonne
+                  </div>
+                </div>
+                {live.change_pct != null && (
+                  <div
+                    data-testid="live-rate-change"
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-base ${
+                      live.direction === "up" ? "bg-[#1E5E3A]/15 text-[#1E5E3A]"
+                        : live.direction === "down" ? "bg-[#991B1B]/15 text-[#991B1B]"
+                        : "bg-[#F4ECE1] text-[#5C4638]"
+                    }`}
+                  >
+                    {live.direction === "up" ? <ArrowUp className="w-5 h-5" /> : live.direction === "down" ? <ArrowDown className="w-5 h-5" /> : <Minus className="w-5 h-5" />}
+                    {Math.abs(live.change_pct)}%
+                  </div>
+                )}
               </div>
-              <div className="text-lg text-[#5C4638] mt-1">
-                ${live.usd_per_tonne?.toLocaleString()} per metric tonne
-              </div>
-              <div className="text-sm text-[#5C4638] mt-4">
+              {live.trend?.length > 1 && (
+                <div className="h-40 mt-4 -ml-2" data-testid="live-rate-chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={live.trend}>
+                      <defs>
+                        <linearGradient id="liveGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#1E5E3A" stopOpacity={0.35} />
+                          <stop offset="100%" stopColor="#1E5E3A" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E3D5C5" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#5C4638" }} tickFormatter={(d) => (d || "").slice(0, 7)} minTickGap={24} />
+                      <YAxis tick={{ fontSize: 11, fill: "#5C4638" }} domain={["auto", "auto"]} width={44} tickFormatter={(v) => `$${v}`} />
+                      <Tooltip formatter={(v) => [`$${v}/kg`, "Price"]} contentStyle={{ borderRadius: 12, border: "2px solid #8C6D58", fontFamily: "JetBrains Mono" }} />
+                      <Area type="monotone" dataKey="value" stroke="#1E5E3A" strokeWidth={3} fill="url(#liveGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <div className="text-sm text-[#5C4638] mt-2">
                 As of {live.date} · Source: global market{live.source === "cache" ? " (cached)" : ""}
               </div>
             </>
@@ -138,6 +178,29 @@ export default function CocoaRate() {
                 {live.message || "The internet-based global rate source is not reachable right now."} Your private buying rate above still works fully offline.
               </p>
             </div>
+          )}
+        </Card>
+
+        {/* Your rate movement chart */}
+        <Card className="p-6 bg-white border-2 border-[#8C6D58]/30 rounded-xl lg:col-span-2" data-testid="rate-movement-card">
+          <div className="flex items-center gap-2 mb-3">
+            <LineChartIcon className="w-5 h-5 text-[#8C4A27]" />
+            <h3 className="font-heading text-xl font-semibold text-[#3B1E10]">Your Buying Rate Movement (₦/kg)</h3>
+          </div>
+          {rate.history?.length > 1 ? (
+            <div className="h-56" data-testid="rate-movement-chart">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={[...rate.history].reverse().map((h) => ({ date: fmtDateTime(h.date).split(",")[0], rate: h.rate }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E3D5C5" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#5C4638" }} minTickGap={20} />
+                  <YAxis tick={{ fontSize: 11, fill: "#5C4638" }} domain={["auto", "auto"]} width={60} tickFormatter={(v) => `₦${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v) => [naira(v), "Rate/kg"]} contentStyle={{ borderRadius: 12, border: "2px solid #8C6D58" }} />
+                  <Line type="monotone" dataKey="rate" stroke="#8C4A27" strokeWidth={3} dot={{ r: 4, fill: "#D97706" }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="text-[#5C4638]">Set the rate a few times to see how your buying price moves over time.</p>
           )}
         </Card>
 

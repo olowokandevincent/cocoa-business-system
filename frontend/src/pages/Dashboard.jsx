@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, naira } from "@/lib/api";
+import { api, apiErr, naira } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Users, Banknote, Package, TriangleAlert, ClipboardList, TrendingUp, Lock, ChevronRight, Loader2,
+  Pencil, Check, ArrowUp, ArrowDown, Minus,
 } from "lucide-react";
 
 function StatTile({ icon: Icon, title, value, sub, accent, testid, onClick, badge, urgent }) {
@@ -33,13 +37,27 @@ function StatTile({ icon: Icon, title, value, sub, accent, testid, onClick, badg
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [editName, setEditName] = useState(false);
+  const [nameVal, setNameVal] = useState("");
 
   useEffect(() => {
     api.get("/dashboard/stats").then((r) => setStats(r.data)).catch(() => {});
   }, []);
+
+  const saveName = async () => {
+    if (!nameVal.trim()) return;
+    try {
+      const { data } = await api.patch("/auth/me", { name: nameVal.trim() });
+      setUser(data);
+      setEditName(false);
+      toast.success("Name updated");
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
 
   if (!stats)
     return (
@@ -48,14 +66,47 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8 animate-fade-up">
-        <p className="text-lg text-[#5C4638] font-medium">
-          {new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        </p>
-        <h1 className="font-heading text-4xl sm:text-5xl font-bold text-[#3B1E10] mt-1">
-          Good day, {user?.name?.split(" ")[0] || "there"}.
-        </h1>
-        <p className="text-lg text-[#5C4638] mt-2">Here is what your store looks like today.</p>
+      <div className="relative rounded-2xl overflow-hidden mb-8 animate-fade-up border-2 border-[#8C6D58]/40 shadow-lg">
+        <img
+          src="https://images.pexels.com/photos/37516665/pexels-photo-37516665.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+          alt="Cocoa pods harvest"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#3B1E10] via-[#3B1E10]/90 to-[#3B1E10]/50" />
+        <div className="relative z-10 p-8 sm:p-10">
+          <p className="text-base sm:text-lg text-[#E3D5C5] font-medium">
+            {new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+          {editName ? (
+            <div className="flex items-center gap-2 mt-2 max-w-md">
+              <Input
+                autoFocus
+                value={nameVal}
+                data-testid="owner-name-input"
+                onChange={(e) => setNameVal(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveName()}
+                placeholder="Your name"
+                className="h-12 text-lg bg-white/95 border-2 border-[#D97706] text-[#24140E]"
+              />
+              <Button onClick={saveName} data-testid="save-owner-name" className="h-12 bg-[#D97706] hover:bg-[#b45309] text-white font-bold">
+                <Check className="w-5 h-5" />
+              </Button>
+            </div>
+          ) : (
+            <h1 className="font-heading text-4xl sm:text-5xl font-bold text-[#FAF5EF] mt-1 flex items-center gap-3 flex-wrap">
+              Good day, {user?.name || "there"}.
+              <button
+                onClick={() => { setNameVal(user?.name || ""); setEditName(true); }}
+                data-testid="edit-owner-name"
+                className="text-[#D97706] hover:text-[#f59e0b] p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                aria-label="Edit your name"
+              >
+                <Pencil className="w-6 h-6" />
+              </button>
+            </h1>
+          )}
+          <p className="text-lg text-[#E3D5C5] mt-2">Here is what your store looks like today.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,10 +165,25 @@ export default function Dashboard() {
           </div>
           <div className="mt-4">
             <div className="text-base font-semibold text-[#E3D5C5]">Cocoa Rate</div>
-            <div className="font-heading text-2xl font-bold mt-1 flex items-center gap-2">
+            <div className="font-heading text-2xl font-bold mt-1" data-testid="dashboard-rate-confidential">
               Confidential
             </div>
-            <div className="text-sm text-[#D97706] mt-1 flex items-center gap-1 font-semibold">
+            {stats.rate_trend && stats.rate_trend !== "flat" && stats.rate_change_pct != null ? (
+              <div
+                data-testid="dashboard-rate-trend"
+                className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm ${
+                  stats.rate_trend === "up" ? "bg-[#1E5E3A]/40 text-[#6ee7a8]" : "bg-[#991B1B]/40 text-[#fca5a5]"
+                }`}
+              >
+                {stats.rate_trend === "up" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+                Market {stats.rate_trend} {Math.abs(stats.rate_change_pct)}%
+              </div>
+            ) : (
+              <div data-testid="dashboard-rate-trend" className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm bg-[#4d2a17] text-[#E3D5C5]">
+                <Minus className="w-4 h-4" /> Rate steady
+              </div>
+            )}
+            <div className="text-sm text-[#D97706] mt-2 flex items-center gap-1 font-semibold">
               Tap to view on the private rate page <ChevronRight className="w-4 h-4" />
             </div>
           </div>

@@ -190,6 +190,26 @@ class RateInput(BaseModel):
     note: Optional[str] = ""
 
 
+class MeUpdate(BaseModel):
+    name: str
+
+
+class CaretakerRecordInput(BaseModel):
+    note: str
+
+
+class FertilizerInput(BaseModel):
+    quantity: float
+    unit: Optional[str] = "bags"
+    note: Optional[str] = ""
+    value: Optional[float] = 0
+
+
+class FertilizerRepayInput(BaseModel):
+    quantity: Optional[float] = None
+    note: Optional[str] = ""
+
+
 # ---------------- Auth Endpoints ----------------
 @api_router.post("/auth/login")
 async def login(body: LoginInput, request: Request, response: Response):
@@ -232,6 +252,16 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
 @api_router.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return clean_user(user)
+
+
+@api_router.patch("/auth/me")
+async def update_me(body: MeUpdate, user: dict = Depends(get_current_user)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"name": name}})
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    return clean_user(fresh)
 
 
 @api_router.post("/auth/refresh")
@@ -347,8 +377,8 @@ async def create_customer(body: CustomerCreate, user: dict = Depends(get_current
     doc = {
         "id": str(uuid.uuid4()), "customer_id": cid, "full_name": body.full_name.strip(),
         "phone": body.phone or "", "address": body.address or "", "notes": body.notes or "",
-        "caretakers": [c.model_dump() for c in body.caretakers],
-        "date_added": iso_now(), "debts": [], "repayments": [],
+        "caretakers": [{**c.model_dump(), "id": str(uuid.uuid4()), "records": []} for c in body.caretakers],
+        "date_added": iso_now(), "debts": [], "repayments": [], "fertilizer": [],
         "created_by": user["name"],
     }
     await db.customers.insert_one(doc)
@@ -385,7 +415,15 @@ async def update_customer(customer_pk: str, body: CustomerUpdate, user: dict = D
         if val is not None:
             update[field] = val
     if body.caretakers is not None:
-        update["caretakers"] = [ct.model_dump() for ct in body.caretakers]
+        existing = {ct.get("name"): ct for ct in c.get("caretakers", [])}
+        merged = []
+        for ct in body.caretakers:
+            d = ct.model_dump()
+            prev = existing.get(d.get("name"))
+            d["id"] = prev.get("id") if prev else str(uuid.uuid4())
+            d["records"] = prev.get("records", []) if prev else []
+            merged.append(d)
+        update["caretakers"] = merged
     if update:
         await db.customers.update_one({"id": customer_pk}, {"$set": update})
     fresh = await db.customers.find_one({"id": customer_pk}, {"_id": 0})
@@ -421,6 +459,50 @@ async def add_repayment(customer_pk: str, body: RepaymentInput, user: dict = Dep
              "date": iso_now(), "received_by": user["name"]}
     await db.customers.update_one({"id": customer_pk}, {"$push": {"repayments": entry}})
     return entry
+
+
+@api_router.post("/customers/{customer_pk}/caretakers/{index}/records")
+async def add_caretaker_record(customer_pk: str, index: int, body: CaretakerRecordInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    caretakers = c.get("caretakers", [])
+    if index < 0 or index >= len(caretakers):
+        raise HTTPException(status_code=404, detail="Caretaker not found")
+    entry = {"id": str(uuid.uuid4()), "note": body.note.strip(), "date": iso_now(), "by": user["name"]}
+    caretakers[index].setdefault("records", []).append(entry)
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"caretakers": caretakers}})
+    return entry
+
+
+@api_router.post("/customers/{customer_pk}/fertilizer")
+async def add_fertilizer(customer_pk: str, body: FertilizerInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    entry = {"id": str(uuid.uuid4()), "quantity": body.quantity, "unit": body.unit or "bags",
+             "note": body.note or "", "value": round(body.value or 0, 2), "returned": 0,
+             "status": "outstanding", "date": iso_now(), "by": user["name"]}
+    await db.customers.update_one({"id": customer_pk}, {"$push": {"fertilizer": entry}})
+    return entry
+
+
+@api_router.patch("/customers/{customer_pk}/fertilizer/{fid}/return")
+async def return_fertilizer(customer_pk: str, fid: str, body: FertilizerRepayInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    fert = c.get("fertilizer", [])
+    found = next((f for f in fert if f.get("id") == fid), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="Fertilizer record not found")
+    ret = body.quantity if body.quantity is not None else found["quantity"]
+    found["returned"] = round(min(found["quantity"], (found.get("returned", 0) + ret)), 2)
+    found["status"] = "settled" if found["returned"] >= found["quantity"] else "partial"
+    found["last_return_note"] = body.note or ""
+    found["settled_at"] = iso_now()
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"fertilizer": fert}})
+    return found
 
 
 # ---------------- Cocoa Store Records ----------------
@@ -566,9 +648,19 @@ async def get_live_rate(user: dict = Depends(get_current_user)):
         if not latest:
             raise ValueError("No data returned")
         usd_tonne = float(latest["value"])
+        valid = [d for d in data_points if d.get("value") not in (".", None)]
+        recent = valid[:12]
+        trend = [{"date": d["date"], "value": round(float(d["value"]) / 1000, 3)} for d in recent][::-1]
+        change_pct, direction = None, "flat"
+        if len(recent) >= 2:
+            cur, prev = float(recent[0]["value"]), float(recent[1]["value"])
+            if prev:
+                change_pct = round((cur - prev) / prev * 100, 1)
+                direction = "up" if cur > prev else "down" if cur < prev else "flat"
         result = {"available": True, "usd_per_tonne": round(usd_tonne, 2),
                   "usd_per_kg": round(usd_tonne / 1000, 4), "date": latest["date"],
-                  "name": j.get("name", "Global Cocoa Price"), "unit": j.get("unit", "USD per metric ton")}
+                  "name": j.get("name", "Global Cocoa Price"), "unit": j.get("unit", "USD per metric ton"),
+                  "trend": trend, "change_pct": change_pct, "direction": direction}
         await db.settings.update_one({"_id": "cocoa_live"},
                                      {"$set": {"data": result, "fetched_at": iso_now()}}, upsert=True)
         return {**result, "source": "live"}
@@ -600,6 +692,15 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
     todays_records = sum(1 for r in records if r.get("created_at", "").startswith(today))
 
     rate_set = await db.settings.find_one({"_id": "cocoa_rate"})
+    rate_hist = await db.rate_history.find({}, {"_id": 0}).sort("date", -1).to_list(2)
+    rate_trend, rate_change_pct = None, None
+    if len(rate_hist) >= 2 and rate_hist[1].get("rate"):
+        latest, prev = rate_hist[0]["rate"], rate_hist[1]["rate"]
+        diff = latest - prev
+        rate_trend = "up" if diff > 0 else "down" if diff < 0 else "flat"
+        rate_change_pct = round(diff / prev * 100, 1) if prev else None
+    elif len(rate_hist) == 1:
+        rate_trend = "flat"
     return {
         "total_customers": total_customers,
         "total_owed": total_owed,
@@ -608,6 +709,8 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "unscaled_count": unscaled_count,
         "todays_records": todays_records,
         "rate_configured": bool(rate_set and rate_set.get("rate")),
+        "rate_trend": rate_trend,
+        "rate_change_pct": rate_change_pct,
     }
 
 
