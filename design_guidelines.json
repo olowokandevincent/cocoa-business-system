@@ -1,0 +1,196 @@
+{
+  "archetype": "ORGANIC & EARTHY - Cocoa Heritage Ledger & Senior-Friendly Business Record System",
+  "theme_strategy": {
+    "mode": "Light Warm Parchment default with High-Contrast Dark Cocoa toggle option",
+    "target_user": "70-year-old Cocoa Business Owner & trusted staff (Needs ultra-legible typography, large high-contrast inputs, touch-friendly 52px+ action buttons, intuitive warmth, and explicit confirmation safety locks against accidental edits)",
+    "currency": "Nigerian Naira (NGN / ₦)",
+    "units": "Kilograms (kg) and Standard Cocoa Bags (~64kg/bag)"
+  },
+  "typography": {
+    "font_family_heading": "'Playfair Display', 'Merriweather', serif",
+    "font_family_body": "'Plus Jakarta Sans', 'Outfit', sans-serif",
+    "font_family_mono": "'JetBrains Mono', monospace",
+    "scale": {
+      "h1_hero": "text-4xl sm:text-5xl font-bold tracking-tight leading-tight",
+      "h2_section": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3_card": "text-xl sm:text-2xl font-semibold",
+      "body_large": "text-lg sm:text-xl font-normal leading-relaxed",
+      "body_standard": "text-base sm:text-lg font-normal leading-normal",
+      "caption_badge": "text-sm sm:text-base font-medium tracking-wide"
+    },
+    "accessibility_rules": [
+      "Minimum body font size 16px (1rem), standard body at 18px for maximum legibility by senior user",
+      "All text colors must meet WCAG AAA / APCA high contrast rules against backgrounds (minimum contrast 7:1)",
+      "Never use subtle light gray text on light backgrounds; use rich espresso (#2C1A11) or deep bronze (#3D271D)",
+      "Interactive buttons must use minimum 18px bold text with clear icon labels"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "bg_main": "#FAF5EF",
+      "bg_card": "#FFFFFF",
+      "bg_card_warm": "#F4ECE1",
+      "primary_cocoa_dark": "#3B1E10",
+      "primary_cocoa_accent": "#8C4A27",
+      "amber_gold": "#D97706",
+      "leaf_green": "#1E5E3A",
+      "amber_warning": "#9A3412",
+      "text_main": "#24140E",
+      "text_muted": "#5C4638",
+      "border_strong": "#8C6D58",
+      "border_soft": "#E3D5C5",
+      "alert_unscaled_bg": "#FEF2F2",
+      "alert_unscaled_border": "#DC2626",
+      "alert_unscaled_text": "#991B1B"
+    },
+    "role_mapping": {
+      "header_bg": "bg-[#3B1E10] text-[#FAF5EF]",
+      "stat_card": "bg-white border-2 border-[#8C6D58]/30 shadow-md rounded-xl p-6 hover:border-[#8C4A27]",
+      "primary_button": "bg-[#8C4A27] hover:bg-[#3B1E10] text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md transition-colors border-2 border-[#3B1E10]/20",
+      "secondary_button": "bg-[#F4ECE1] hover:bg-[#E3D5C5] text-[#24140E] font-semibold py-3 px-5 rounded-lg text-lg border-2 border-[#8C6D58]/40",
+      "danger_button": "bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold py-3 px-5 rounded-lg text-lg rounded-lg border-2 border-[#7F1D1D]",
+      "input_field": "bg-white border-2 border-[#8C6D58] text-[#24140E] text-lg rounded-lg p-3 focus:ring-4 focus:ring-[#8C4A27]/30 focus:border-[#8C4A27]"
+    }
+  },
+  "visual_enhancers": {
+    "textures": "Subtle organic warm parchment feel, rich dark wood border accents, high-contrast cocoa bean badge icons",
+    "safety_locks": {
+      "description": "To protect against accidental edits by senior owner or staff, editing and deleting actions are locked by default with an explicit 'Unlock Edits' switch + two-step confirmation modal.",
+      "visual_indicator": "Locked fields show a padlocked badge with clear text 'Read-Only (Click Unlock to edit)'"
+    },
+    "built_in_calculator": {
+      "location": "Embedded inside Customer Profile and Cocoa Records page",
+      "features": "Quick calculate bags to kg (e.g. 1 bag ~ 64kg), NGN money owed calculation (kg x price), debt balance reduction preview"
+    }
+  },
+  "layout_and_navigation": {
+    "header": {
+      "style": "High-contrast sticky topbar in deep cocoa brown (#3B1E10), with clear brand logo, store status, live session timer, user role switcher (Admin / Staff), and prominent navigation tabs",
+      "nav_links": [
+        { "name": "Dashboard", "path": "/" },
+        { "name": "Customers", "path": "/customers" },
+        { "name": "Cocoa Store Records", "path": "/cocoa-records" },
+        { "name": "Live Cocoa Rate", "path": "/cocoa-rate" },
+        { "name": "Staff Management", "path": "/staff", "admin_only": true }
+      ]
+    },
+    "dashboard_tiles": {
+      "grid": "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+      "tiles": [
+        {
+          "id": "tile_total_customers",
+          "title": "Total Registered Customers",
+          "data_testid": "dashboard-stat-total-customers",
+          "icon": "Users",
+          "badge": "Active Accounts"
+        },
+        {
+          "id": "tile_total_money_owed",
+          "title": "Total Money Currently Owed",
+          "data_testid": "dashboard-stat-total-money-owed",
+          "currency": "NGN ₦",
+          "icon": "Banknotes",
+          "accent": "text-[#9A3412]"
+        },
+        {
+          "id": "tile_cocoa_in_store",
+          "title": "Cocoa Currently in Store",
+          "data_testid": "dashboard-stat-cocoa-in-store",
+          "format": "Total kg & Estimated Bags",
+          "icon": "ArchiveBox",
+          "accent": "text-[#1E5E3A]"
+        },
+        {
+          "id": "tile_unscaled_cocoa_count",
+          "title": "Unscaled Cocoa Notification Count",
+          "data_testid": "dashboard-stat-unscaled-count",
+          "icon": "ExclamationTriangle",
+          "urgent_badge": "Requires Weight Scale Entry",
+          "accent": "bg-red-100 border-red-400 text-red-900"
+        },
+        {
+          "id": "tile_todays_records",
+          "title": "Today's Store Activity Records",
+          "data_testid": "dashboard-stat-todays-records",
+          "icon": "ClipboardDocumentList",
+          "format": "Deliveries & Scaling Updates Today"
+        },
+        {
+          "id": "tile_cocoa_rate_clickable",
+          "title": "Live Cocoa Buying Rate",
+          "data_testid": "dashboard-stat-cocoa-rate-clickable",
+          "icon": "LockClosed",
+          "rule": "CRITICAL: Do NOT show the actual price value on dashboard. Show 'CONFIDENTIAL RATE - Click/Tap to view on Private Rate Page' with a lock icon to maintain business privacy.",
+          "action": "Navigate to /cocoa-rate"
+        }
+      ]
+    }
+  },
+  "key_features_details": {
+    "login_screen": {
+      "data_testid": "login-container",
+      "roles": ["Admin (Owner)", "Staff"],
+      "demo_switch": "Include quick demo role switcher for immediate testing without hassle"
+    },
+    "customers_page": {
+      "sequential_id_rule": "Every customer has a permanent, sequential, zero-padded ID (001, 002, 003...)",
+      "search_filter": "Search by Customer ID (001), Full Name, Phone number, Caretaker name",
+      "list_columns": ["ID", "Full Name", "Phone", "Caretakers", "Current Balance (NGN Owed)", "Date Added", "Actions"]
+    },
+    "customer_profile": {
+      "header_info": ["Sequential ID (e.g. #001)", "Full Name", "Phone Number", "Address", "Date Added", "Notes"],
+      "caretakers": "Supports listing multiple caretakers (e.g., 'Brother / Farm Manager')",
+      "debt_section": "Displays total money owed (NGN ₦), detailed list of debt reasons (e.g., 'Pre-season loan', 'Fertilizer advance')",
+      "repayment_history": "Complete ledger of payments, date, amount paid, staff receiver, receipt note",
+      "built_in_calculator": "Interactive Cocoa Debt & Bag Converter calculator integrated directly into profile for instant math",
+      "safety": "Locked against accidental edits; requires clicking 'Enable Editing' switch to modify record details"
+    },
+    "cocoa_store_records": {
+      "concept": "CRITICAL RULE: Cocoa arriving at store does NOT belong to a customer just because they brought or delivered it. It is recorded as general store arrivals stock with scaling state.",
+      "arrival_entry_form": {
+        "fields": ["Date & Time", "Bags Delivered", "Status (Scaled vs Unscaled)", "Scaled Weight in kg (if weighed)", "Delivered By / Truck Note", "Store Location / Bay"],
+        "unscaled_flag": "If marked Unscaled, entry highlights prominently in red/amber with a prominent 'Enter Weight Now' action button"
+      },
+      "store_summary": "Human-readable description of current cocoa in store (e.g., 'Store holds 4,250 kg scaled cocoa across 66 bags, plus 4 unscaled deliveries awaiting weighing balance.')",
+      "daily_history": "Filterable history log by Date range, Scaled vs Unscaled status"
+    },
+    "cocoa_rate_page": {
+      "purpose": "Dedicated private page showing official buying rate per kg",
+      "features": ["Current buying rate (NGN/kg)", "Admin edit rate form with price history log", "Rate calculator for quick total payout simulation"]
+    },
+    "admin_staff_management": {
+      "purpose": "Admin owner can manage staff access",
+      "features": ["List of staff members", "Add new staff account", "Toggle Active/Inactive status", "Permissions summary"]
+    }
+  },
+  "image_urls": {
+    "cocoa_pods_tree": "https://images.unsplash.com/photo-1743252878695-367d69dc87a8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODh8MHwxfHNlYXJjaHwzfHxjb2NvYSUyMGJlYW5zJTIwY29jb2ElMjBwb2RzJTIwaGFydmVzdCUyMHBsYW50YXRpb24lMjBjb2NvYSUyMGZhcm1lcnxlbnwwfHx8fDE3ODk3MDI5NDR8MA&ixlib=rb-4.1.0&q=85",
+    "cocoa_pods_harvest": "https://images.pexels.com/photos/37516665/pexels-photo-37516665.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "cocoa_beans_sack": "https://images.pexels.com/photos/6420910/pexels-photo-6420910.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "cocoa_beans_drying": "https://images.pexels.com/photos/4157763/pexels-photo-4157763.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "cocoa_farmer_hands": "https://images.unsplash.com/photo-1507576164121-220762647800?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzF8MHwxfHNlYXJjaHwzfHxkcmllZCUyMGNvY29hJTIwYmVhbnMlMjBzYWNrcyUyMGhhcnZlc3QlMjBicm93bnxlbnwwfHx8fDE3ODk3MDI5NTF8MA&ixlib=rb-4.1.0&q=85"
+  },
+  "instructions_to_main_agent": [
+    "Follow all guidelines specified in this json file precisely.",
+    "Implement high-contrast senior-friendly UI with clean 18px+ text and generous line height.",
+    "Strictly follow the 'Clickable Cocoa Rate' dashboard tile rule: DO NOT display the numeric cocoa price on the dashboard; display a lock icon + button leading to /cocoa-rate.",
+    "Ensure Cocoa Store Records clearly state that cocoa arriving does NOT automatically belong to a customer.",
+    "Ensure sequential zero-padded IDs (001, 002, 003...) for all customers.",
+    "Include a built-in cocoa/debt calculator inside the customer profile view and store records page.",
+    "Include safety mechanisms: edit unlock toggle button and explicit confirmation modals on dangerous actions.",
+    "Make sure all interactive and key data elements have data-testid attributes."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate",
+    "You MUST NOT apply universal transition (e.g., transition: all). Exclude transforms.",
+    "You MUST NOT center align the app container",
+    "Always use modern button styles with clear text labels and minimum 48px touch height for accessibility",
+    "NEVER use AI assistant emoji characters for icons; use Lucide or Phosphor icons",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations",
+    "Use generous spacing (2-3x typical)",
+    "All interactive elements MUST include data-testid attributes"
+  ]
+}
