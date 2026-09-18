@@ -22,6 +22,10 @@ Private, business record web app for a small cocoa trader (owner in his 70s + tr
 
 ## Implemented (2026-06)
 - JWT auth with seeded admin, brute-force lockout, role-based access. ✅
+- Editable owner name (PATCH /auth/me); dashboard hero image + greeting uses owner name. ✅
+- Dashboard confidential rate tile shows market up/down trend badge (no price leak). ✅
+- Cocoa Rate: live global price with up/down % + trend area chart; "Your Buying Rate Movement" line chart. ✅
+- Customer profile: per-caretaker short records; separate Fertilizer feed (collected/returned) distinct from money owing. ✅
 - Dashboard with 6 stat tiles incl. confidential rate tile. ✅
 - Customers list + debounced search + add + profile (caretakers, debts, repayments, full history, edit-lock, built-in calculator). ✅
 - Cocoa store records: scaled/unscaled arrivals, enter-weight flow, human-readable store summary, status filters, admin-only delete. ✅
