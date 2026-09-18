@@ -25,7 +25,8 @@ Private, business record web app for a small cocoa trader (owner in his 70s + tr
 - Editable owner name (PATCH /auth/me); dashboard hero image + greeting uses owner name. ✅
 - Dashboard confidential rate tile shows market up/down trend badge (no price leak). ✅
 - Cocoa Rate: live global price with up/down % + trend area chart; "Your Buying Rate Movement" line chart. ✅
-- Customer profile: per-caretaker short records; separate Fertilizer feed (collected/returned) distinct from money owing. ✅
+- Customer profile: per-caretaker short records; separate Fertilizer feed (record-only) distinct from money owing. ✅
+- Per-caretaker OWN money ledger (debts/repayments) tracked separately from customer money; add/remove multiple caretakers from within the profile; cocoa image banner in mobile menu. ✅ (33/33 backend, full frontend E2E)
 - Dashboard with 6 stat tiles incl. confidential rate tile. ✅
 - Customers list + debounced search + add + profile (caretakers, debts, repayments, full history, edit-lock, built-in calculator). ✅
 - Cocoa store records: scaled/unscaled arrivals, enter-weight flow, human-readable store summary, status filters, admin-only delete. ✅

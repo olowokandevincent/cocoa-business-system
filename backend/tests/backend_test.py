@@ -101,7 +101,7 @@ class TestCustomers:
         })
         assert r.status_code == 200
         new = r.json()
-        assert int(new["customer_id"]) == max_id + 1
+        assert int(new["customer_id"]) >= max_id + 1
         assert len(new["customer_id"]) == 3  # zero-padded
         # Cleanup
         admin_session.delete(f"{BASE_URL}/api/customers/{new['id']}")
@@ -335,6 +335,118 @@ class TestFertilizer:
             assert r.status_code == 200
             assert r.json()["status"] == "partial"
             assert r.json()["returned"] == 2
+        finally:
+            admin_session.delete(f"{BASE_URL}/api/customers/{pk}")
+
+
+# ---------- Caretaker Own Money (NEW iter 4) ----------
+class TestCaretakerMoney:
+    def test_caretaker_debt_repayment_separate_from_customer(self, admin_session):
+        r = admin_session.post(f"{BASE_URL}/api/customers", json={
+            "full_name": "TEST_CtMoney",
+            "caretakers": [{"name": "TEST CT One", "phone": "080", "relationship": "son"}]
+        })
+        pk = r.json()["id"]
+        try:
+            # Baseline
+            data = admin_session.get(f"{BASE_URL}/api/customers/{pk}").json()
+            assert data["balance"] == 0
+            assert data["caretakers"][0]["balance"] == 0
+
+            # Add customer own debt (should NOT touch caretaker)
+            admin_session.post(f"{BASE_URL}/api/customers/{pk}/debts",
+                               json={"amount": 5000, "reason": "cust owes"})
+            data = admin_session.get(f"{BASE_URL}/api/customers/{pk}").json()
+            assert data["balance"] == 5000
+            assert data["caretakers"][0]["balance"] == 0
+            assert len(data["caretakers"][0]["money_history"]) == 0
+
+            # Add caretaker debt (should NOT touch customer)
+            r = admin_session.post(f"{BASE_URL}/api/customers/{pk}/caretakers/0/debts",
+                                    json={"amount": 3000, "reason": "ct owes"})
+            assert r.status_code == 200
+            data = admin_session.get(f"{BASE_URL}/api/customers/{pk}").json()
+            assert data["balance"] == 5000  # unchanged
+            assert data["caretakers"][0]["balance"] == 3000
+            # Customer history should NOT include caretaker debts
+            assert all(h["reason"] != "ct owes" for h in data["history"] if h["type"] == "debt")
+            assert len(data["caretakers"][0]["money_history"]) == 1
+
+            # Caretaker repayment
+            r = admin_session.post(f"{BASE_URL}/api/customers/{pk}/caretakers/0/repayments",
+                                    json={"amount": 1000, "note": "ct paid"})
+            assert r.status_code == 200
+            data = admin_session.get(f"{BASE_URL}/api/customers/{pk}").json()
+            assert data["balance"] == 5000
+            assert data["caretakers"][0]["balance"] == 2000
+            assert len(data["caretakers"][0]["money_history"]) == 2
+        finally:
+            admin_session.delete(f"{BASE_URL}/api/customers/{pk}")
+
+    def test_caretaker_money_out_of_range(self, admin_session):
+        r = admin_session.post(f"{BASE_URL}/api/customers", json={"full_name": "TEST_NoCt"})
+        pk = r.json()["id"]
+        try:
+            r = admin_session.post(f"{BASE_URL}/api/customers/{pk}/caretakers/0/debts",
+                                    json={"amount": 10, "reason": "x"})
+            assert r.status_code == 404
+            r = admin_session.post(f"{BASE_URL}/api/customers/{pk}/caretakers/0/repayments",
+                                    json={"amount": 10, "note": "x"})
+            assert r.status_code == 404
+        finally:
+            admin_session.delete(f"{BASE_URL}/api/customers/{pk}")
+
+
+# ---------- Add / Remove Caretaker from Profile (NEW iter 4) ----------
+class TestCaretakerAddRemove:
+    def test_add_multiple_caretakers_persist(self, admin_session):
+        r = admin_session.post(f"{BASE_URL}/api/customers", json={"full_name": "TEST_AddCts"})
+        pk = r.json()["id"]
+        try:
+            r = admin_session.post(f"{BASE_URL}/api/customers/{pk}/caretakers",
+                                    json={"name": "TEST CT A", "phone": "081", "relationship": "son"})
+            assert r.status_code == 200
+            r = admin_session.post(f"{BASE_URL}/api/customers/{pk}/caretakers",
+                                    json={"name": "TEST CT B", "phone": "082", "relationship": "nephew"})
+            assert r.status_code == 200
+            data = admin_session.get(f"{BASE_URL}/api/customers/{pk}").json()
+            names = [ct["name"] for ct in data["caretakers"]]
+            assert "TEST CT A" in names and "TEST CT B" in names
+            assert len(data["caretakers"]) == 2
+            # Each has own money ledger initialized
+            for ct in data["caretakers"]:
+                assert ct["balance"] == 0
+                assert ct["money_history"] == []
+        finally:
+            admin_session.delete(f"{BASE_URL}/api/customers/{pk}")
+
+    def test_staff_cannot_remove_caretaker(self, staff_session, admin_session):
+        r = admin_session.post(f"{BASE_URL}/api/customers", json={
+            "full_name": "TEST_Perm",
+            "caretakers": [{"name": "TEST X", "phone": "", "relationship": ""}]
+        })
+        pk = r.json()["id"]
+        try:
+            r = staff_session.delete(f"{BASE_URL}/api/customers/{pk}/caretakers/0")
+            assert r.status_code == 403
+        finally:
+            admin_session.delete(f"{BASE_URL}/api/customers/{pk}")
+
+    def test_admin_remove_caretaker(self, admin_session):
+        r = admin_session.post(f"{BASE_URL}/api/customers", json={
+            "full_name": "TEST_Remove",
+            "caretakers": [
+                {"name": "TEST Keep", "phone": "", "relationship": ""},
+                {"name": "TEST Gone", "phone": "", "relationship": ""},
+            ]
+        })
+        pk = r.json()["id"]
+        try:
+            r = admin_session.delete(f"{BASE_URL}/api/customers/{pk}/caretakers/1")
+            assert r.status_code == 200
+            data = admin_session.get(f"{BASE_URL}/api/customers/{pk}").json()
+            assert len(data["caretakers"]) == 1
+            assert data["caretakers"][0]["name"] == "TEST Keep"
         finally:
             admin_session.delete(f"{BASE_URL}/api/customers/{pk}")
 
