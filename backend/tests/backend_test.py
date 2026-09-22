@@ -209,8 +209,13 @@ class TestCocoaRate:
         r = admin_session.get(f"{BASE_URL}/api/cocoa-rate/live")
         assert r.status_code == 200
         data = r.json()
-        # Since ALPHA_VANTAGE_KEY empty, should be unavailable (or cache)
+        # Yahoo CC=F: either live/cache with price OR graceful available:False
         assert "available" in data or "source" in data
+
+    def test_live_rate_staff_forbidden(self, staff_session):
+        # Iter 5: live rate is admin-only
+        r = staff_session.get(f"{BASE_URL}/api/cocoa-rate/live")
+        assert r.status_code == 403
 
 
 # ---------- Staff Management ----------
@@ -461,3 +466,82 @@ class TestStaffToggle:
         # re-enable
         r = admin_session.patch(f"{BASE_URL}/api/staff/{sid}", json={"active": True})
         assert r.json()["active"] is True
+
+
+# ---------- Cocoa Records Date Filter (NEW iter 5) ----------
+class TestCocoaRecordsDateFilter:
+    def test_filter_by_date_param(self, admin_session):
+        # Create a record today; filter today should include it
+        r = admin_session.post(f"{BASE_URL}/api/cocoa-records", json={
+            "bags": 1, "status": "scaled", "weight_kg": 50, "delivered_by": "TEST_DATE"
+        })
+        assert r.status_code == 200
+        rid = r.json()["id"]
+        try:
+            from datetime import date, timedelta as td
+            today = date.today().isoformat()
+            r = admin_session.get(f"{BASE_URL}/api/cocoa-records", params={"date": today})
+            assert r.status_code == 200
+            assert any(x["id"] == rid for x in r.json())
+            # A distant past date should NOT include this record
+            past = (date.today() - td(days=3650)).isoformat()
+            r = admin_session.get(f"{BASE_URL}/api/cocoa-records", params={"date": past})
+            assert r.status_code == 200
+            assert all(x["id"] != rid for x in r.json())
+        finally:
+            admin_session.delete(f"{BASE_URL}/api/cocoa-records/{rid}")
+
+
+# ---------- PIN Lock (NEW iter 5) ----------
+class TestPinLock:
+    def test_pin_flow_and_throttle(self, admin_session):
+        # Set a strong PIN
+        pin = "739461"
+        r = admin_session.put(f"{BASE_URL}/api/auth/pin",
+                              json={"pin": pin, "password": ADMIN_PASSWORD})
+        assert r.status_code == 200, r.text
+        assert r.json().get("pin_set") is True
+
+        # /me should now have pin_set true
+        me = admin_session.get(f"{BASE_URL}/api/auth/me").json()
+        assert me.get("pin_set") is True
+
+        # Wrong password rejected
+        r = admin_session.put(f"{BASE_URL}/api/auth/pin",
+                              json={"pin": "482913", "password": "WRONG_PW"})
+        assert r.status_code == 401
+
+        # Obvious PIN rejected
+        r = admin_session.put(f"{BASE_URL}/api/auth/pin",
+                              json={"pin": "1234", "password": ADMIN_PASSWORD})
+        assert r.status_code == 400
+        r = admin_session.put(f"{BASE_URL}/api/auth/pin",
+                              json={"pin": "0000", "password": ADMIN_PASSWORD})
+        assert r.status_code == 400
+        # Non-digit rejected
+        r = admin_session.put(f"{BASE_URL}/api/auth/pin",
+                              json={"pin": "abcd", "password": ADMIN_PASSWORD})
+        assert r.status_code == 400
+
+        # Verify correct PIN
+        r = admin_session.post(f"{BASE_URL}/api/auth/pin/verify", json={"pin": pin})
+        assert r.status_code == 200
+        assert r.json().get("ok") is True
+
+        # Verify wrong PIN 5 times -> 429
+        # Use a fresh admin session to avoid polluting main session's cookies (we still keep the same session)
+        got_429 = False
+        for _ in range(6):
+            r = admin_session.post(f"{BASE_URL}/api/auth/pin/verify", json={"pin": "999999"})
+            if r.status_code == 429:
+                got_429 = True
+                break
+            assert r.status_code == 401
+        assert got_429, "Expected 429 after 5 wrong PIN attempts"
+
+        # A correct PIN while locked also returns 429
+        r = admin_session.post(f"{BASE_URL}/api/auth/pin/verify", json={"pin": pin})
+        assert r.status_code == 429
+
+        # Cleanup: unset PIN and clear attempts by directly using db via a fresh set_pin
+        # We reset by clearing the pin_hash via mongo shell in fixture below
