@@ -35,6 +35,9 @@ export default function CustomerProfile() {
   const [pay, setPay] = useState({ amount: "", note: "" });
   const [fertOpen, setFertOpen] = useState(false);
   const [fert, setFert] = useState({ quantity: "", unit: "bags", note: "", value: "" });
+  const [fertPayOpen, setFertPayOpen] = useState(false);
+  const [fertPayTarget, setFertPayTarget] = useState(null);
+  const [fertPay, setFertPay] = useState({ amount: "", note: "" });
   const [ctAddOpen, setCtAddOpen] = useState(false);
   const [newCt, setNewCt] = useState({ name: "", phone: "", relationship: "" });
 
@@ -112,6 +115,39 @@ export default function CustomerProfile() {
     }
   };
 
+  const openFertPay = (f) => {
+    setFertPayTarget(f);
+    setFertPay({ amount: "", note: "" });
+    setFertPayOpen(true);
+  };
+
+  const submitFertPay = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/customers/${id}/fertilizer/${fertPayTarget.id}/payments`, {
+        amount: Number(fertPay.amount), note: fertPay.note,
+      });
+      toast.success("Fertilizer payment recorded");
+      setFertPayOpen(false);
+      load();
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
+
+  const payFullFert = async () => {
+    try {
+      await api.post(`/customers/${id}/fertilizer/${fertPayTarget.id}/payments`, {
+        amount: fertPayTarget.balance, note: "Full payment",
+      });
+      toast.success("Fertilizer marked as paid");
+      setFertPayOpen(false);
+      load();
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
+
   const addCaretaker = async (e) => {
     e.preventDefault();
     try {
@@ -127,6 +163,11 @@ export default function CustomerProfile() {
 
   if (!c)
     return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#8C4A27]" /></div>;
+
+  const fertTotals = (c.fertilizer || []).reduce(
+    (acc, f) => ({ value: acc.value + (f.value || 0), paid: acc.paid + (f.paid || 0), balance: acc.balance + (f.balance || 0) }),
+    { value: 0, paid: 0, balance: 0 },
+  );
 
   return (
     <div className="animate-fade-up">
@@ -248,7 +289,7 @@ export default function CustomerProfile() {
                 <h2 className="font-heading text-2xl font-bold text-[#1E5E3A] flex items-center gap-2">
                   <Sprout className="w-6 h-6" /> Fertilizer Collected
                 </h2>
-                <p className="text-sm text-[#5C4638] mt-1">Separate from money owed — tracks fertilizer the customer took.</p>
+                <p className="text-sm text-[#5C4638] mt-1">Separate from money owed — tracks fertilizer the customer took and how much of it has been paid.</p>
               </div>
               <Dialog open={fertOpen} onOpenChange={setFertOpen}>
                 <DialogTrigger asChild>
@@ -281,26 +322,110 @@ export default function CustomerProfile() {
                 </DialogContent>
               </Dialog>
             </div>
+
+            {fertTotals.value > 0 && (
+              <div className="mb-4 flex flex-wrap gap-x-6 gap-y-2 bg-[#EAF3EC] rounded-lg px-4 py-3 border border-[#BBD8C2]" data-testid="fertilizer-totals">
+                <div className="text-sm"><span className="text-[#5C4638]">Total value: </span>
+                  <span className="font-mono font-bold text-[#24140E]">{naira(fertTotals.value)}</span></div>
+                <div className="text-sm"><span className="text-[#5C4638]">Paid: </span>
+                  <span className="font-mono font-bold text-[#1E5E3A]">{naira(fertTotals.paid)}</span></div>
+                <div className="text-sm"><span className="text-[#5C4638]">Still owing: </span>
+                  <span className={`font-mono font-bold ${fertTotals.balance > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`} data-testid="fertilizer-total-balance">{naira(fertTotals.balance)}</span></div>
+              </div>
+            )}
+
             {c.fertilizer?.length ? (
-              <div className="space-y-2" data-testid="fertilizer-list">
+              <div className="space-y-3" data-testid="fertilizer-list">
                 {c.fertilizer.map((f) => (
-                  <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border bg-[#F4ECE1] border-[#E3D5C5]">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#1E5E3A]">
-                      <Sprout className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-[#24140E]">
-                        {f.quantity} {f.unit} {f.note ? `— ${f.note}` : ""}
-                        {f.value ? <span className="text-[#5C4638] font-normal"> ({naira(f.value)})</span> : null}
+                  <div key={f.id} className="p-4 rounded-lg border bg-[#F4ECE1] border-[#E3D5C5]" data-testid={`fertilizer-record-${f.id}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#1E5E3A] shrink-0">
+                        <Sprout className="w-5 h-5 text-white" />
                       </div>
-                      <div className="text-sm text-[#5C4638]">{fmtDateTime(f.date)} · {f.by}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-[#24140E]">
+                          {f.quantity} {f.unit} {f.note ? `— ${f.note}` : ""}
+                        </div>
+                        <div className="text-sm text-[#5C4638]">{fmtDateTime(f.date)} · {f.by}</div>
+                      </div>
+                      <FertilizerStatusBadge status={f.payment_status} />
                     </div>
+
+                    {f.value > 0 && (
+                      <>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-white rounded-lg border border-[#E3D5C5] py-2">
+                            <div className="text-xs uppercase tracking-wide text-[#5C4638]">Value</div>
+                            <div className="font-mono font-bold text-[#24140E]">{naira(f.value)}</div>
+                          </div>
+                          <div className="bg-white rounded-lg border border-[#E3D5C5] py-2">
+                            <div className="text-xs uppercase tracking-wide text-[#5C4638]">Paid</div>
+                            <div className="font-mono font-bold text-[#1E5E3A]" data-testid={`fertilizer-paid-${f.id}`}>{naira(f.paid)}</div>
+                          </div>
+                          <div className="bg-white rounded-lg border border-[#E3D5C5] py-2">
+                            <div className="text-xs uppercase tracking-wide text-[#5C4638]">Balance</div>
+                            <div className={`font-mono font-bold ${f.balance > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`} data-testid={`fertilizer-balance-${f.id}`}>{naira(f.balance)}</div>
+                          </div>
+                        </div>
+
+                        {f.payments?.length > 0 && (
+                          <div className="mt-2 space-y-1 max-h-28 overflow-y-auto" data-testid={`fertilizer-payments-${f.id}`}>
+                            {f.payments.map((p) => (
+                              <div key={p.id} className="flex items-center justify-between text-sm gap-2">
+                                <span className="text-[#5C4638] truncate">
+                                  Paid{p.note ? ` · ${p.note}` : ""} · {fmtDateTime(p.date)}
+                                </span>
+                                <span className="font-mono font-bold text-[#1E5E3A] shrink-0">−{naira(p.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {f.balance > 0 && (
+                          <Button onClick={() => openFertPay(f)} data-testid={`fertilizer-pay-${f.id}`}
+                            className="mt-3 h-10 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">
+                            <HandCoins className="w-4 h-4 mr-1" /> Record payment
+                          </Button>
+                        )}
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-[#5C4638]">No fertilizer collected yet.</p>
             )}
+
+            <Dialog open={fertPayOpen} onOpenChange={setFertPayOpen}>
+              <DialogContent className="bg-[#FAF5EF]">
+                <DialogHeader><DialogTitle className="font-heading text-2xl text-[#1E5E3A]">Record Fertilizer Payment</DialogTitle></DialogHeader>
+                {fertPayTarget && (
+                  <form onSubmit={submitFertPay} className="space-y-4">
+                    <div className="rounded-lg bg-white border-2 border-[#8C6D58] p-3 text-base">
+                      <div className="text-[#5C4638]">
+                        {fertPayTarget.quantity} {fertPayTarget.unit}{fertPayTarget.note ? ` — ${fertPayTarget.note}` : ""}
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[#5C4638]">Balance owing</span>
+                        <span className="font-mono font-bold text-[#9A3412]" data-testid="fert-pay-balance">{naira(fertPayTarget.balance)}</span>
+                      </div>
+                    </div>
+                    <Field label="Amount paid (₦) *"><Input type="number" step="0.01" min="0" required value={fertPay.amount}
+                      data-testid="fert-pay-amount" onChange={(e) => setFertPay({ ...fertPay, amount: e.target.value })}
+                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                    <Field label="Note"><Input value={fertPay.note} data-testid="fert-pay-note"
+                      placeholder="e.g. part payment" onChange={(e) => setFertPay({ ...fertPay, note: e.target.value })}
+                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                    <DialogFooter className="gap-2 sm:gap-2 sm:justify-between">
+                      <Button type="button" variant="outline" onClick={payFullFert} data-testid="fert-pay-full"
+                        className="h-12 font-bold border-2 border-[#1E5E3A] text-[#1E5E3A] hover:bg-[#EAF3EC]">Pay full balance</Button>
+                      <Button type="submit" data-testid="fert-pay-save"
+                        className="h-12 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">Record payment</Button>
+                    </DialogFooter>
+                  </form>
+                )}
+              </DialogContent>
+            </Dialog>
           </Card>
 
           {/* Debt & repayment actions */}
@@ -551,6 +676,18 @@ function CaretakerCard({ customerId, index, ct, isAdmin, onDone }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function FertilizerStatusBadge({ status }) {
+  if (!status || status === "no_charge") return null;
+  const labels = { paid: "Paid", partial: "Part-paid", unpaid: "Unpaid" };
+  const colors = { paid: "bg-[#1E5E3A] text-white", partial: "bg-[#B45309] text-white", unpaid: "bg-[#9A3412] text-white" };
+  return (
+    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${colors[status]}`}
+      data-testid={`fert-status-${status}`}>
+      {labels[status]}
+    </span>
   );
 }
 

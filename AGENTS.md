@@ -50,6 +50,15 @@ Log in with the credentials documented in `auth_testing.md` (also set as sandbox
   compose lists **after** `.env.base44-defaults` so real values always win.
 - **`ALPHA_VANTAGE_KEY` is optional** (live global cocoa price on the Cocoa Rate page). Empty is a
   supported state: the page shows its "live price unavailable" message.
+- **Dashboard is the "Market Ledger" view** (ruled-paper page, dark ink-green band, numbered ledger
+  rows with dotted leaders). Its cocoa imagery is committed under `frontend/public/cocoa/`
+  (`cocoa-pods.jpg`, `cocoa-beans.jpg`) and referenced by absolute path, e.g. `/cocoa/cocoa-pods.jpg`.
+- **`GET /api/cocoa-rate/live` is admin-only** and, besides the USD figures, now returns `usdngn`,
+  `ngn_per_kg` and `trend_ngn` — the same global market converted to naira via Yahoo `NGN=X`. The
+  FX call is best-effort: if it fails those keys are simply absent and the UI falls back to USD.
+  The dashboard shows the naira figure and live chart to the **owner only**; staff see "Confidential",
+  preserving the long-standing "no price on the dashboard" rule. Staff requests to this endpoint
+  return 403 (verified), so the secrecy is enforced server-side, not just in the UI.
 - Startup is slow the first time: `pip install` of the pinned requirements at image build, then
   `yarn install` into a cold `node_modules` volume on first container start.
 

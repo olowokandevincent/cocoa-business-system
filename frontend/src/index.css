@@ -60,6 +60,40 @@ h1, h2, h3, .font-heading {
 }
 .pulse-warn { animation: pulseWarn 2s infinite; }
 
+/* ---- Market Ledger dashboard (ruled-paper treatment) ---- */
+.ledger-paper {
+    background-color: #FBF6EC;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0, transparent 39px,
+        rgba(138, 129, 119, 0.18) 39px, rgba(138, 129, 119, 0.18) 40px
+    );
+    border: 1px solid #D9CFBA;
+}
+.ledger-margin-rule { box-shadow: inset 2px 0 0 0 rgba(176, 101, 28, 0.35); }
+.ledger-small-caps {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+}
+.ledger-dotted {
+    flex: 1 1 auto;
+    min-width: 1.5rem;
+    border-bottom: 2px dotted rgba(138, 129, 119, 0.55);
+    transform: translateY(-0.35rem);
+}
+@keyframes ledgerRise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.ledger-rise { animation: ledgerRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes ledgerPulse {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); }
+}
+.ledger-pulse { animation: ledgerPulse 2.4s ease-in-out infinite; }
+
 @layer base {
     :root {
         --background: 36 44% 96%;

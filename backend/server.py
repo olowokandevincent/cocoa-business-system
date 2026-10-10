@@ -220,6 +220,11 @@ class FertilizerRepayInput(BaseModel):
     note: Optional[str] = ""
 
 
+class FertilizerPaymentInput(BaseModel):
+    amount: float
+    note: Optional[str] = ""
+
+
 # ---------------- Auth Endpoints ----------------
 @api_router.post("/auth/login")
 async def login(body: LoginInput, request: Request, response: Response):
@@ -419,6 +424,28 @@ def customer_summary(c: dict) -> dict:
     }
 
 
+def fertilizer_view(f: dict) -> dict:
+    """Add the money picture for one fertilizer record: what it is worth, what has
+    been paid, what is still owed, and the matching status label."""
+    f = dict(f)
+    value = round(f.get("value") or 0, 2)
+    paid = round(f.get("paid") or 0, 2)
+    balance = round(max(value - paid, 0), 2)
+    if value <= 0:
+        payment_status = "no_charge"
+    elif paid <= 0:
+        payment_status = "unpaid"
+    elif paid >= value:
+        payment_status = "paid"
+    else:
+        payment_status = "partial"
+    f["value"] = value
+    f["paid"] = paid
+    f["balance"] = balance
+    f["payment_status"] = payment_status
+    return f
+
+
 @api_router.get("/customers")
 async def list_customers(search: str = "", user: dict = Depends(get_current_user)):
     customers = await db.customers.find({}, {"_id": 0}).sort("customer_id", 1).to_list(5000)
@@ -469,6 +496,7 @@ async def get_customer(customer_pk: str, user: dict = Depends(get_current_user))
                         "date": r["date"], "by": r.get("received_by", "")})
     history.sort(key=lambda x: x["date"], reverse=True)
     c["history"] = history
+    c["fertilizer"] = [fertilizer_view(f) for f in c.get("fertilizer", [])]
     for ct in c.get("caretakers", []):
         ct["balance"] = caretaker_balance(ct)
         ct["money_history"] = caretaker_money_history(ct)
@@ -607,10 +635,11 @@ async def add_fertilizer(customer_pk: str, body: FertilizerInput, user: dict = D
     if not c:
         raise HTTPException(status_code=404, detail="Customer not found")
     entry = {"id": str(uuid.uuid4()), "quantity": body.quantity, "unit": body.unit or "bags",
-             "note": body.note or "", "value": round(body.value or 0, 2), "returned": 0,
+             "note": body.note or "", "value": round(body.value or 0, 2), "paid": 0,
+             "payments": [], "returned": 0,
              "status": "outstanding", "date": iso_now(), "by": user["name"]}
     await db.customers.update_one({"id": customer_pk}, {"$push": {"fertilizer": entry}})
-    return entry
+    return fertilizer_view(entry)
 
 
 @api_router.patch("/customers/{customer_pk}/fertilizer/{fid}/return")
@@ -628,7 +657,27 @@ async def return_fertilizer(customer_pk: str, fid: str, body: FertilizerRepayInp
     found["last_return_note"] = body.note or ""
     found["settled_at"] = iso_now()
     await db.customers.update_one({"id": customer_pk}, {"$set": {"fertilizer": fert}})
-    return found
+    return fertilizer_view(found)
+
+
+@api_router.post("/customers/{customer_pk}/fertilizer/{fid}/payments")
+async def pay_fertilizer(customer_pk: str, fid: str, body: FertilizerPaymentInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    fert = c.get("fertilizer", [])
+    found = next((f for f in fert if f.get("id") == fid), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="Fertilizer record not found")
+    amount = round(body.amount or 0, 2)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be more than zero")
+    payment = {"id": str(uuid.uuid4()), "amount": amount, "note": body.note or "",
+               "date": iso_now(), "by": user["name"]}
+    found.setdefault("payments", []).append(payment)
+    found["paid"] = round((found.get("paid") or 0) + amount, 2)
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"fertilizer": fert}})
+    return fertilizer_view(found)
 
 
 # ---------------- Cocoa Store Records ----------------
@@ -790,6 +839,18 @@ async def get_live_rate(user: dict = Depends(require_admin)):
                   "date": (trend[-1]["date"] if trend else datetime.now(timezone.utc).strftime("%Y-%m")),
                   "name": "ICE Cocoa Futures (CC=F)", "unit": "USD per metric ton",
                   "trend": trend, "change_pct": change_pct, "direction": direction}
+        # Naira view of the same market price (public global market, not our buying rate).
+        try:
+            async with httpx.AsyncClient(timeout=10, headers=headers) as hc:
+                fx = await hc.get("https://query1.finance.yahoo.com/v8/finance/chart/NGN=X",
+                                  params={"range": "5d", "interval": "1d"})
+            usdngn = fx.json()["chart"]["result"][0]["meta"].get("regularMarketPrice")
+            if usdngn:
+                result["usdngn"] = round(usdngn, 2)
+                result["ngn_per_kg"] = round(result["usd_per_kg"] * usdngn, 0)
+                result["trend_ngn"] = [{"date": p["date"], "value": round(p["value"] * usdngn, 0)} for p in trend]
+        except Exception as e:
+            logger.warning(f"USD/NGN rate fetch failed: {e}")
         await db.settings.update_one({"_id": "cocoa_live"},
                                      {"$set": {"data": result, "fetched_at": iso_now()}}, upsert=True)
         return {**result, "source": "live"}
