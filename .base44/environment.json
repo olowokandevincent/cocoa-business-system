@@ -1,0 +1,18 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "JWT_SECRET",
+      "description": "Signs the app's JWT session cookies. Required at boot (backend/server.py reads os.environ['JWT_SECRET']).",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "ALPHA_VANTAGE_KEY",
+      "description": "Optional. Alpha Vantage API key (https://www.alphavantage.co/support/#api-key) for the live global cocoa price on the Cocoa Rate page. Empty means the page shows its graceful 'live price unavailable' state.",
+      "requiredAtBoot": false
+    }
+  ]
+}
