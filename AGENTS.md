@@ -50,9 +50,20 @@ Log in with the credentials documented in `auth_testing.md` (also set as sandbox
   compose lists **after** `.env.base44-defaults` so real values always win.
 - **`ALPHA_VANTAGE_KEY` is optional** (live global cocoa price on the Cocoa Rate page). Empty is a
   supported state: the page shows its "live price unavailable" message.
-- **Dashboard is the "Market Ledger" view** (ruled-paper page, dark ink-green band, numbered ledger
-  rows with dotted leaders). Its cocoa imagery is committed under `frontend/public/cocoa/`
-  (`cocoa-pods.jpg`, `cocoa-beans.jpg`) and referenced by absolute path, e.g. `/cocoa/cocoa-pods.jpg`.
+- **Dashboard is the "Glass Harvest" view** — a full-bleed cocoa plantation photograph behind frosted
+  "glass" sheets, with the market readout on a floating panel (plus a real-data naira area chart for the
+  owner) and six numbered glass tiles. Its styling lives in the `.gh-*` block at the end of
+  `frontend/src/index.css`; the shared app header (`Layout.jsx`) uses the same dark glass bar.
+- **The `.gh-*` rules sit after Tailwind's utilities**, so they win on equal specificity. They therefore
+  set no `display`/`width` where the markup relies on responsive utilities — e.g. `.gh-nav` and `.gh-btn`
+  deliberately omit `display`, and callers pass `hidden lg:flex` / `flex lg:hidden`. Keep it that way
+  when adding rules, or `hidden`/`lg:*` break.
+- **The dashboard route is special-cased in `Layout.jsx`**: on `/` only, it renders the fixed
+  full-viewport backdrop and drops the `<main>` padding (the page owns its own margins). Other routes
+  keep the parchment background. Restyling the header therefore affects every page.
+- All dashboard imagery is the platform-hosted generated images (absolute `media.base44.com` URLs in
+  `Layout.jsx` / `Dashboard.jsx`). `frontend/public/cocoa/` still holds the older committed
+  pods/beans photos; it is no longer referenced by the dashboard.
 - **`GET /api/cocoa-rate/live` is admin-only** and, besides the USD figures, now returns `usdngn`,
   `ngn_per_kg` and `trend_ngn` — the same global market converted to naira via Yahoo `NGN=X`. The
   FX call is best-effort: if it fails those keys are simply absent and the UI falls back to USD.

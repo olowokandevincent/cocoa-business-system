@@ -46,8 +46,8 @@ export function PinControls({ variant = "desktop" }) {
   };
 
   const btnClass = variant === "mobile"
-    ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-lg font-semibold text-[#E3D5C5]"
-    : "flex items-center gap-2 bg-[#4d2a17] hover:bg-[#5e3420] px-3 py-2.5 rounded-lg font-semibold transition-colors text-[#E3D5C5]";
+    ? "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-[#3B1E10] hover:bg-[#23372B]/5"
+    : "flex gh-btn";
 
   return (
     <>
