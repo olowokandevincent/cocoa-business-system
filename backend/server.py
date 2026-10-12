@@ -24,6 +24,10 @@ db = client[os.environ['DB_NAME']]
 
 JWT_ALGORITHM = "HS256"
 
+# Alpha Vantage supplies the realtime USD/NGN rate that turns the world market price into naira.
+# Optional: with no key configured the endpoint falls back to Yahoo's NGN=X quote.
+ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "").strip()
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
@@ -804,6 +808,25 @@ async def delete_cocoa_record(record_id: str, user: dict = Depends(require_admin
     return {"message": "Record deleted"}
 
 
+async def alpha_vantage_usdngn() -> Optional[float]:
+    """Realtime USD -> NGN rate from Alpha Vantage. None when no key is configured."""
+    if not ALPHA_VANTAGE_KEY:
+        return None
+    async with httpx.AsyncClient(timeout=15) as hc:
+        resp = await hc.get("https://www.alphavantage.co/query", params={
+            "function": "CURRENCY_EXCHANGE_RATE",
+            "from_currency": "USD",
+            "to_currency": "NGN",
+            "apikey": ALPHA_VANTAGE_KEY,
+        })
+    body = resp.json()
+    rate = (body.get("Realtime Currency Exchange Rate") or {}).get("5. Exchange Rate")
+    if not rate:
+        raise ValueError(body.get("Information") or body.get("Note") or body.get("Error Message")
+                         or "Alpha Vantage returned no USD/NGN rate")
+    return float(rate)
+
+
 # ---------------- Cocoa Rate ----------------
 @api_router.get("/cocoa-rate")
 async def get_rate(user: dict = Depends(get_current_user)):
@@ -827,7 +850,10 @@ async def set_rate(body: RateInput, user: dict = Depends(require_admin)):
 
 
 @api_router.get("/cocoa-rate/live")
-async def get_live_rate(user: dict = Depends(require_admin)):
+async def get_live_rate(user: dict = Depends(get_current_user)):
+    # The world market is public data, so every signed-in user gets it; only the
+    # private buying rate (POST /cocoa-rate) stays owner-only.
+    # The 6-hour cache also keeps us inside the Alpha Vantage free tier (25 calls/day).
     cache = await db.settings.find_one({"_id": "cocoa_live"})
     if cache and cache.get("fetched_at"):
         fetched = datetime.fromisoformat(cache["fetched_at"])
@@ -867,17 +893,30 @@ async def get_live_rate(user: dict = Depends(require_admin)):
                   "name": "ICE Cocoa Futures (CC=F)", "unit": "USD per metric ton",
                   "trend": trend, "change_pct": change_pct, "direction": direction}
         # Naira view of the same market price (public global market, not our buying rate).
+        # Alpha Vantage provides the realtime USD/NGN rate; Yahoo NGN=X is the fallback when the
+        # key is unset or the call fails, so the naira figures still appear either way.
+        usdngn, fx_source = None, None
         try:
-            async with httpx.AsyncClient(timeout=10, headers=headers) as hc:
-                fx = await hc.get("https://query1.finance.yahoo.com/v8/finance/chart/NGN=X",
-                                  params={"range": "5d", "interval": "1d"})
-            usdngn = fx.json()["chart"]["result"][0]["meta"].get("regularMarketPrice")
+            usdngn = await alpha_vantage_usdngn()
             if usdngn:
-                result["usdngn"] = round(usdngn, 2)
-                result["ngn_per_kg"] = round(result["usd_per_kg"] * usdngn, 0)
-                result["trend_ngn"] = [{"date": p["date"], "value": round(p["value"] * usdngn, 0)} for p in trend]
+                fx_source = "alpha_vantage"
         except Exception as e:
-            logger.warning(f"USD/NGN rate fetch failed: {e}")
+            logger.warning(f"Alpha Vantage USD/NGN fetch failed: {e}")
+        if not usdngn:
+            try:
+                async with httpx.AsyncClient(timeout=10, headers=headers) as hc:
+                    fx = await hc.get("https://query1.finance.yahoo.com/v8/finance/chart/NGN=X",
+                                      params={"range": "5d", "interval": "1d"})
+                usdngn = fx.json()["chart"]["result"][0]["meta"].get("regularMarketPrice")
+                if usdngn:
+                    fx_source = "yahoo"
+            except Exception as e:
+                logger.warning(f"USD/NGN rate fallback fetch failed: {e}")
+        if usdngn:
+            result["usdngn"] = round(usdngn, 2)
+            result["ngn_per_kg"] = round(result["usd_per_kg"] * usdngn, 0)
+            result["trend_ngn"] = [{"date": p["date"], "value": round(p["value"] * usdngn, 0)} for p in trend]
+            result["fx_source"] = fx_source
         await db.settings.update_one({"_id": "cocoa_live"},
                                      {"$set": {"data": result, "fetched_at": iso_now()}}, upsert=True)
         return {**result, "source": "live"}

@@ -11,7 +11,7 @@
     },
     {
       "name": "ALPHA_VANTAGE_KEY",
-      "description": "Optional. Alpha Vantage API key (https://www.alphavantage.co/support/#api-key) for the live global cocoa price on the Cocoa Rate page. Empty means the page shows its graceful 'live price unavailable' state.",
+      "description": "Optional but recommended. Alpha Vantage API key (free tier: https://www.alphavantage.co/support/#api-key). It supplies the realtime USD/NGN rate that converts the live world cocoa price into naira on the dashboard and the Cocoa Rate page. Alpha Vantage has no cocoa feed, so the price itself still comes from the global market; without this key the conversion falls back to Yahoo's NGN=X quote and the naira chart still appears.",
       "requiredAtBoot": false
     }
   ]

@@ -179,8 +179,9 @@ export default function Staff() {
       <div className="ce-card ce-card-dark ce-rise ce-d4">
         <div className="ce-card-title"><ShieldCheck /> What staff can and cannot see</div>
         <p className="ce-note" style={{ marginTop: 10 }}>
-          Staff can record customers, cocoa arrivals and repayments. Your private buying rate and the
-          live global market stay owner-only, and only the owner can add or remove accounts.
+          Staff can record customers, cocoa arrivals and repayments, and can see the live world
+          market. Your private buying rate stays yours to set, and only the owner can add or remove
+          accounts.
         </p>
       </div>
     </div>

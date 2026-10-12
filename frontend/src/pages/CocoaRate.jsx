@@ -38,9 +38,8 @@ export default function CocoaRate() {
     load();
   }, []);
 
-  // Owner-only: the world market keeps ticking, so this page keeps pulling.
+  // The world market keeps ticking, so this page keeps pulling — for owner and staff alike.
   useEffect(() => {
-    if (!isAdmin) return;
     let stop = false;
     const pull = () =>
       api.get("/cocoa-rate/live")
@@ -49,7 +48,7 @@ export default function CocoaRate() {
     pull();
     const t = setInterval(pull, 30000);
     return () => { stop = true; clearInterval(t); };
-  }, [isAdmin]);
+  }, []);
 
   const save = async (e) => {
     e.preventDefault();
@@ -132,8 +131,8 @@ export default function CocoaRate() {
           )}
         </div>
 
-        {/* Live global reference (owner only) */}
-        {isAdmin ? (
+        {/* Live global market — every signed-in user sees it */}
+        {(
           <div className="ce-card ce-rise ce-d2" data-testid="live-rate-card">
             <div className="ce-card-title">
               {live?.available ? <Globe style={{ color: "#1E5B38" }} /> : <WifiOff style={{ color: "#8A6A4E" }} />}
@@ -188,7 +187,9 @@ export default function CocoaRate() {
                 )}
                 <div className="ce-note" style={{ marginTop: 10, fontSize: 13 }}>
                   As of {live.date} · Source: global market{live.source === "cache" ? " (cached)" : ""}
-                  {nairaSeries ? " · converted to naira" : ""}
+                  {nairaSeries
+                    ? ` · naira rate via ${live.fx_source === "alpha_vantage" ? "Alpha Vantage" : "the FX market"}`
+                    : ""}
                 </div>
               </>
             ) : (
@@ -197,15 +198,6 @@ export default function CocoaRate() {
                 Your private buying rate on the left still works fully offline.
               </p>
             )}
-          </div>
-        ) : (
-          <div className="ce-card ce-card-leaf ce-rise ce-d2" data-testid="staff-rate-note">
-            <div className="ce-card-title" style={{ color: "#1E5B38" }}><Globe /> Live global market</div>
-            <div className="ce-figure" style={{ fontSize: 30, marginTop: 12 }}>Owner only</div>
-            <p className="ce-note" style={{ marginTop: 8 }}>
-              The live world market price is private to the owner. Buy cocoa at{" "}
-              <b>{rate.rate ? naira(rate.rate) + "/kg" : "the owner's rate"}</b> shown on the left.
-            </p>
           </div>
         )}
 

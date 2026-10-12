@@ -49,14 +49,19 @@ owner `olowokandevincent0@gmail.com` / `Cocoa@2026`, demo `demo@cocoaledger.app`
 - **`JWT_SECRET` is required at boot** (`os.environ["JWT_SECRET"]`); the sandbox gets a generated
   development value from the Base44 secrets store, delivered via `/run/base44/app.env`, which
   compose lists **after** `.env.base44-defaults` so real values always win.
-- **`ALPHA_VANTAGE_KEY` is optional** (live global cocoa price on the Cocoa Rate page). Empty is a
-  supported state: the page shows its "live price unavailable" message.
-- **`GET /api/cocoa-rate/live` is admin-only** and, besides the USD figures, returns `usdngn`,
-  `ngn_per_kg` and `trend_ngn` — the same global market converted to naira via Yahoo `NGN=X`. The FX
-  call is best-effort: if it fails those keys are simply absent and the UI falls back to USD.
-  The dashboard and the Cocoa Rate page show the naira figure and live chart to the **owner only**;
-  staff see "Confidential" on the dashboard. Staff requests to this endpoint return 403, so the
-  secrecy is enforced server-side, not just in the UI. Both pages poll it every 30 s.
+- **`ALPHA_VANTAGE_KEY` supplies the naira leg of the live market** — `alpha_vantage_usdngn()`
+  in `backend/server.py` calls `CURRENCY_EXCHANGE_RATE` (USD→NGN). Alpha Vantage has **no cocoa
+  product** (only copper/corn/cotton/sugar/coffee/wheat/aluminum), so the price itself still comes
+  from the global market feed and the key only provides the realtime FX rate. It is **optional at
+  boot**: unset, or the call failing, silently falls back to Yahoo `NGN=X`, so the naira chart
+  appears either way. The free tier allows 25 calls/day, which the 6-hour cache keeps us inside.
+- **`GET /api/cocoa-rate/live` is open to every signed-in user** (owner *and* staff) and, besides the
+  USD figures, returns `usdngn`, `ngn_per_kg`, `trend_ngn` and `fx_source` (`"alpha_vantage"` or
+  `"yahoo"`) — the same public global market converted to naira. The FX call is best-effort: if both
+  sources fail those keys are simply absent and the UI falls back to USD. The dashboard and the
+  Cocoa Rate page show the naira figure and live chart to everyone; both poll it every 30 s.
+  **Only the private buying rate stays owner-only** (`POST /api/cocoa-rate` is still `require_admin`,
+  as is `GET /api/staff`).
 - Startup is slow the first time: `pip install` of the pinned requirements at image build, then
   `yarn install` into a cold `node_modules` volume on first container start.
 
@@ -94,9 +99,9 @@ Every page shares one theme, defined in **`frontend/src/styles/cocoa-estate.css`
   `{available: false}`), which is how the sign-in page offers its "Enter demo" button without
   hardcoding credentials in the frontend bundle.
 - The demo account is created with `role: "admin"` so a demo shows the whole app, including the
-  owner-only market figures. It therefore exposes owner-level access to anyone with the sign-in
-  page — switch it off by clearing `DEMO_EMAIL`/`DEMO_PASSWORD` (or set them to something private)
-  before showing the app to the public.
+  owner-only controls (setting the buying rate, staff management). It therefore exposes owner-level
+  access to anyone with the sign-in page — switch it off by clearing `DEMO_EMAIL`/`DEMO_PASSWORD`
+  (or set them to something private) before showing the app to the public.
 
 ## Verifying a change
 

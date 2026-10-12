@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, apiErr, naira } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Pencil, Check, Loader2, Lock } from "lucide-react";
+import { Pencil, Check, Loader2 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip as RTooltip, YAxis } from "recharts";
 import {
   TrendBadge, LedgerTileTall, LedgerTileRow, LedgerTileRate,
@@ -23,9 +23,8 @@ export default function Dashboard() {
     api.get("/dashboard/stats").then((r) => setStats(r.data)).catch(() => {});
   }, []);
 
-  // Owner-only: live global cocoa market, refreshed so the readout keeps moving.
+  // Live global cocoa market, for every signed-in user, refreshed so the readout keeps moving.
   useEffect(() => {
-    if (!isAdmin) return;
     let stop = false;
     const pull = () =>
       api.get("/cocoa-rate/live")
@@ -34,7 +33,7 @@ export default function Dashboard() {
     pull();
     const t = setInterval(pull, 30000);
     return () => { stop = true; clearInterval(t); };
-  }, [isAdmin]);
+  }, []);
 
   const saveName = async () => {
     if (!nameVal.trim()) return;
@@ -68,7 +67,7 @@ export default function Dashboard() {
     : live?.available && live.usd_per_kg != null
       ? `$${live.usd_per_kg.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
       : "—";
-  const chartReady = isAdmin && live?.available && series.length > 1;
+  const chartReady = live?.available && series.length > 1;
 
   return (
     <div className="ce-page ce-stack">
@@ -121,43 +120,25 @@ export default function Dashboard() {
         <div className="ce-band-scrim" aria-hidden="true" />
 
         <div className="ce-readout">
-          {isAdmin ? (
-            <>
-              <div className="ce-live">
-                <span className="ce-dot" />
-                <span className="ce-eyebrow">Live global cocoa market</span>
-              </div>
-              <div className="ce-big">
-                <span data-testid="dashboard-market-price">{marketFigure}</span>
-                <small>/kg</small>
-                {live?.available && (
-                  <TrendBadge trend={live.direction} changePct={live.change_pct}
-                    testid="dashboard-live-trend" />
-                )}
-              </div>
-              <div className="ce-caption">
-                {live == null
-                  ? "Fetching the world market…"
-                  : live.available
-                    ? <>ICE cocoa futures, converted at ₦{live.usdngn?.toLocaleString()}/$ · {live.date}</>
-                    : (live.message || "The global market is unreachable right now.")}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="ce-live">
-                <span className="ce-dot" />
-                <span className="ce-eyebrow">Cocoa buying rate</span>
-              </div>
-              <div className="ce-big">
-                <Lock className="ce-lock" />
-                <span style={{ fontSize: 34 }}>Confidential</span>
-              </div>
-              <div className="ce-caption">
-                Your buying rate stays private — open the Cocoa Rate page to view or set it.
-              </div>
-            </>
-          )}
+          <div className="ce-live">
+            <span className="ce-dot" />
+            <span className="ce-eyebrow">Live global cocoa market</span>
+          </div>
+          <div className="ce-big">
+            <span data-testid="dashboard-market-price">{marketFigure}</span>
+            <small>/kg</small>
+            {live?.available && (
+              <TrendBadge trend={live.direction} changePct={live.change_pct}
+                testid="dashboard-live-trend" />
+            )}
+          </div>
+          <div className="ce-caption">
+            {live == null
+              ? "Fetching the world market…"
+              : live.available
+                ? <>ICE cocoa futures, converted at ₦{live.usdngn?.toLocaleString()}/$ · {live.date}</>
+                : (live.message || "The global market is unreachable right now.")}
+          </div>
         </div>
 
         <div className="ce-chart" data-testid="dashboard-market-chart">
