@@ -2,9 +2,6 @@ import { useState } from "react";
 import { api, apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLock } from "@/context/LockContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -45,9 +42,9 @@ export function PinControls({ variant = "desktop" }) {
     }
   };
 
-  const btnClass = variant === "mobile"
-    ? "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-[#3B1E10] hover:bg-[#23372B]/5"
-    : "flex gh-btn";
+  // The mobile variant is rendered inside the .ce-menu panel, which styles its
+  // own buttons, so it needs no class of its own.
+  const btnClass = variant === "mobile" ? undefined : "flex ce-btn";
 
   return (
     <>
@@ -60,35 +57,36 @@ export function PinControls({ variant = "desktop" }) {
             <KeyRound className="w-5 h-5" /> {user?.pin_set ? "Change PIN" : "Set PIN"}
           </button>
         </DialogTrigger>
-        <DialogContent className="bg-[#FAF5EF]">
+        <DialogContent className="ce-dialog">
           <DialogHeader>
-            <DialogTitle className="font-heading text-2xl text-[#3B1E10]">{user?.pin_set ? "Change" : "Set"} screen PIN</DialogTitle>
-            <DialogDescription className="text-[#5C4638]">
+            <DialogTitle className="ce-dialog-title">{user?.pin_set ? "Change" : "Set"} screen PIN</DialogTitle>
+            <DialogDescription className="ce-note">
               A quick PIN lets you lock the screen between customers without logging out.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={savePin} className="space-y-4">
-            <div>
-              <Label className="text-base font-semibold text-[#24140E]">New PIN (4–6 digits)</Label>
-              <Input type="password" inputMode="numeric" maxLength={6} required value={pin} data-testid="new-pin-input"
+          <form onSubmit={savePin}>
+            <div className="ce-field">
+              <label>New PIN (4–6 digits)</label>
+              <input type="password" inputMode="numeric" maxLength={6} required value={pin} data-testid="new-pin-input"
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58] tracking-[0.4em]" />
+                className="ce-input" style={{ letterSpacing: ".4em" }} />
             </div>
-            <div>
-              <Label className="text-base font-semibold text-[#24140E]">Confirm PIN</Label>
-              <Input type="password" inputMode="numeric" maxLength={6} required value={confirm} data-testid="confirm-pin-input"
+            <div className="ce-field">
+              <label>Confirm PIN</label>
+              <input type="password" inputMode="numeric" maxLength={6} required value={confirm} data-testid="confirm-pin-input"
                 onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ""))}
-                className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58] tracking-[0.4em]" />
+                className="ce-input" style={{ letterSpacing: ".4em" }} />
             </div>
-            <div>
-              <Label className="text-base font-semibold text-[#24140E]">Your account password</Label>
-              <Input type="password" required value={password} data-testid="pin-password-input"
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
+            <div className="ce-field">
+              <label>Your account password</label>
+              <input type="password" required value={password} data-testid="pin-password-input"
+                onChange={(e) => setPassword(e.target.value)} className="ce-input" />
             </div>
-            <DialogFooter>
-              <Button type="submit" disabled={busy} data-testid="save-pin-button"
-                className="w-full h-12 bg-[#8C4A27] hover:bg-[#3B1E10] text-white font-bold">Save PIN</Button>
+            <DialogFooter className="mt-4">
+              <button type="submit" disabled={busy} data-testid="save-pin-button"
+                className="ce-cta" style={{ width: "100%" }}>
+                Save PIN
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>

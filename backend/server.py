@@ -226,6 +226,33 @@ class FertilizerPaymentInput(BaseModel):
 
 
 # ---------------- Auth Endpoints ----------------
+def demo_credentials():
+    """The ready-made demo login, when the operator has set one up.
+
+    Off by default: the demo account (and the sign-in page's demo button) only
+    exists when both DEMO_EMAIL and DEMO_PASSWORD are set in the environment.
+    """
+    email = os.environ.get("DEMO_EMAIL", "").strip().lower()
+    password = os.environ.get("DEMO_PASSWORD", "").strip()
+    if email and password:
+        return email, password
+    return None, None
+
+
+@api_router.get("/auth/demo")
+async def demo_account_info():
+    """Public: lets the sign-in page offer the demo account without hardcoding
+    its credentials in the frontend bundle."""
+    email, password = demo_credentials()
+    if not email:
+        return {"available": False}
+    existing = await db.users.find_one({"email": email})
+    if not existing or not existing.get("active", True):
+        return {"available": False}
+    return {"available": True, "email": email, "password": password,
+            "name": existing.get("name", "Demo")}
+
+
 @api_router.post("/auth/login")
 async def login(body: LoginInput, request: Request, response: Response):
     email = body.email.strip().lower()
@@ -924,6 +951,19 @@ async def startup():
         logger.info("Seeded admin account")
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+
+    demo_email, demo_password = demo_credentials()
+    if demo_email:
+        demo = await db.users.find_one({"email": demo_email})
+        if demo is None:
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()), "email": demo_email, "name": "Demo Account",
+                "password_hash": hash_password(demo_password), "role": "admin",
+                "active": True, "created_at": iso_now(), "demo": True,
+            })
+            logger.info("Seeded demo account")
+        elif not verify_password(demo_password, demo["password_hash"]):
+            await db.users.update_one({"email": demo_email}, {"$set": {"password_hash": hash_password(demo_password)}})
 
 
 @app.on_event("shutdown")

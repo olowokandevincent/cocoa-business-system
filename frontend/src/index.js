@@ -2,6 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@/index.css";
+// Loaded after index.css on purpose: the estate theme must sit after Tailwind's
+// utilities in the emitted stylesheet.
+import "@/styles/cocoa-estate.css";
 import App from "@/App";
 
 const queryClient = new QueryClient({

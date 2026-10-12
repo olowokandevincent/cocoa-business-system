@@ -21,13 +21,14 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/     # expect 200
   `node_modules` in a named volume that is synced from `yarn.lock` on every container start.
 - `api` (python:3.12-slim) — `uvicorn --reload` on internal port 8001, source bind-mounted.
   Backend edits reload automatically; `WATCHFILES_FORCE_POLLING=true` is required because the
-  source lives on a bind mount.
+  source lives on a bind mount. **Changing `.env.base44-defaults` needs `docker compose up -d api`** —
+  `env_file` is read at container creation, not on the code reload.
 - `mongo` (mongo:7) — data in the `app_mongo_data` volume. No migrations/seeds to run: the app
-  creates its indexes and seeds the admin account on startup.
+  creates its indexes and seeds the owner (and optionally the demo) account on startup.
 
 Log in with the credentials documented in `auth_testing.md` (also set as sandbox defaults in
 `.env.base44-defaults`, read by `backend/server.py` on startup):
-`olowokandevincent0@gmail.com` / `Cocoa@2026`.
+owner `olowokandevincent0@gmail.com` / `Cocoa@2026`, demo `demo@cocoaledger.app` / `CocoaDemo@2026`.
 
 ## Non-obvious setup facts
 
@@ -50,28 +51,52 @@ Log in with the credentials documented in `auth_testing.md` (also set as sandbox
   compose lists **after** `.env.base44-defaults` so real values always win.
 - **`ALPHA_VANTAGE_KEY` is optional** (live global cocoa price on the Cocoa Rate page). Empty is a
   supported state: the page shows its "live price unavailable" message.
-- **Dashboard is the "Glass Harvest" view** — a full-bleed cocoa plantation photograph behind frosted
-  "glass" sheets, with the market readout on a floating panel (plus a real-data naira area chart for the
-  owner) and six numbered glass tiles. Its styling lives in the `.gh-*` block at the end of
-  `frontend/src/index.css`; the shared app header (`Layout.jsx`) uses the same dark glass bar.
-- **The `.gh-*` rules sit after Tailwind's utilities**, so they win on equal specificity. They therefore
-  set no `display`/`width` where the markup relies on responsive utilities — e.g. `.gh-nav` and `.gh-btn`
-  deliberately omit `display`, and callers pass `hidden lg:flex` / `flex lg:hidden`. Keep it that way
-  when adding rules, or `hidden`/`lg:*` break.
-- **The dashboard route is special-cased in `Layout.jsx`**: on `/` only, it renders the fixed
-  full-viewport backdrop and drops the `<main>` padding (the page owns its own margins). Other routes
-  keep the parchment background. Restyling the header therefore affects every page.
-- All dashboard imagery is the platform-hosted generated images (absolute `media.base44.com` URLs in
-  `Layout.jsx` / `Dashboard.jsx`). `frontend/public/cocoa/` still holds the older committed
-  pods/beans photos; it is no longer referenced by the dashboard.
-- **`GET /api/cocoa-rate/live` is admin-only** and, besides the USD figures, now returns `usdngn`,
-  `ngn_per_kg` and `trend_ngn` — the same global market converted to naira via Yahoo `NGN=X`. The
-  FX call is best-effort: if it fails those keys are simply absent and the UI falls back to USD.
-  The dashboard shows the naira figure and live chart to the **owner only**; staff see "Confidential",
-  preserving the long-standing "no price on the dashboard" rule. Staff requests to this endpoint
-  return 403 (verified), so the secrecy is enforced server-side, not just in the UI.
+- **`GET /api/cocoa-rate/live` is admin-only** and, besides the USD figures, returns `usdngn`,
+  `ngn_per_kg` and `trend_ngn` — the same global market converted to naira via Yahoo `NGN=X`. The FX
+  call is best-effort: if it fails those keys are simply absent and the UI falls back to USD.
+  The dashboard and the Cocoa Rate page show the naira figure and live chart to the **owner only**;
+  staff see "Confidential" on the dashboard. Staff requests to this endpoint return 403, so the
+  secrecy is enforced server-side, not just in the UI. Both pages poll it every 30 s.
 - Startup is slow the first time: `pip install` of the pinned requirements at image build, then
   `yarn install` into a cold `node_modules` volume on first container start.
+
+## The "Cocoa Estate" visual language (current design)
+
+Every page shares one theme, defined in **`frontend/src/styles/cocoa-estate.css`**:
+
+- A dark cocoa-bark canvas (radial warmth + a faint cocoa-bean SVG texture) with a photographic
+  "estate wall" (`ESTATE` in `frontend/src/styles/imagery.js`) fixed behind it. Cream "ledger
+  sheet" cards carry a gold hairline; controls are burnished amber with a pressed 3D edge.
+- `frontend/src/styles/imagery.js` is the single registry of photography (the plantation, the pods
+  drying on a mat, the sack store, plus the committed `public/cocoa/*.jpg`).
+- Shared components: `CocoaMark`/`CocoaBrand` (logo), `PageHeader` (the photographic page banner),
+  `components/dashboard/LedgerTile.jsx` (the six dashboard tiles; it replaced `GlassTile.jsx`).
+- **The logo is a real cocoa photograph**: `frontend/public/cocoa/logo.jpg`, a 320×320 centre crop of
+  the drying-pods photo, framed in a gold ring by CSS. Regenerate it by copying a source image into
+  the `api` container (Pillow is installed there) and copying the crop back out.
+- **Load order matters.** `src/index.js` imports `index.css` and *then* `styles/cocoa-estate.css`,
+  so the theme sits after Tailwind's utilities in the emitted stylesheet and wins on equal
+  specificity. The theme therefore sets no `display` where markup relies on responsive utilities —
+  `.ce-hdr`, `.ce-nav` and `.ce-btn` deliberately omit it, and callers pass `hidden lg:flex` /
+  `flex lg:hidden`. Keep it that way, or `hidden`/`lg:*` break.
+- **Form furniture**: the rewritten pages use native inputs carrying `.ce-field` / `.ce-input`
+  (`.ce-input` also styles `textarea`) instead of the shadcn `Input`, so dialogs keep one look.
+  Dialogs pass `className="ce-dialog"`; confirm buttons are wrapped in `AlertDialogAction asChild`
+  so Radix closes the dialog after the handler runs.
+- `:root` in `index.css` carries the Tailwind/shadcn tokens in the warm palette, so shadcn
+  primitives (dialog/alert-dialog surfaces, switches, toasts) match the theme without being touched.
+
+## The demo account
+
+- Seeded on startup **only when both `DEMO_EMAIL` and `DEMO_PASSWORD` are set** (see
+  `.env.base44-defaults`); with either empty, no account is created at all.
+- `GET /api/auth/demo` is public and returns `{available: true, email, password}` (or
+  `{available: false}`), which is how the sign-in page offers its "Enter demo" button without
+  hardcoding credentials in the frontend bundle.
+- The demo account is created with `role: "admin"` so a demo shows the whole app, including the
+  owner-only market figures. It therefore exposes owner-level access to anyone with the sign-in
+  page — switch it off by clearing `DEMO_EMAIL`/`DEMO_PASSWORD` (or set them to something private)
+  before showing the app to the public.
 
 ## Verifying a change
 
@@ -85,12 +110,19 @@ B="https://3000-$BASE44_PUBLIC_HOST_SUFFIX"
 curl -s -c /tmp/j.txt -X POST "$B/api/auth/login" -H 'Content-Type: application/json' \
   -d '{"email":"olowokandevincent0@gmail.com","password":"Cocoa@2026"}'
 curl -s -b /tmp/j.txt "$B/api/customers"
+curl -s "$B/api/auth/demo"     # the demo login offered on the sign-in page
 ```
 
-- Regression suite (points at a running server; uses the admin credentials above):
+- Regression suite (points at a running server; uses the owner credentials above):
 
 ```bash
 docker compose -f docker-compose.base44.yml exec -T \
   -e REACT_APP_BACKEND_URL="https://3000-$BASE44_PUBLIC_HOST_SUFFIX" \
   api python -m pytest tests/backend_test.py -q
 ```
+
+- In the preview, a screenshot alone proves nothing about layout maths: compare
+  `document.documentElement.scrollWidth` with `clientWidth`. On a page tall enough to scroll,
+  Chrome reports ~8 px more for the classic scrollbar even with no horizontal overflow — measure
+  element `getBoundingClientRect().right` against the *initial containing block* before calling it
+  a defect.

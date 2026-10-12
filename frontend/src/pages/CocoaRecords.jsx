@@ -1,11 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { api, apiErr, fmtDateTime } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/PageHeader";
+import { PODS_CLOSE } from "@/styles/imagery";
 import { Calculator } from "@/components/Calculator";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
@@ -19,13 +16,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const EMPTY = { bags: "", status: "unscaled", weight_kg: "", delivered_by: "", location: "", note: "" };
+
 export default function CocoaRecords() {
   const { user } = useAuth();
   const [records, setRecords] = useState(null);
   const [summary, setSummary] = useState(null);
   const [filter, setFilter] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ bags: "", status: "unscaled", weight_kg: "", delivered_by: "", location: "", note: "" });
+  const [form, setForm] = useState(EMPTY);
   const [weighOpen, setWeighOpen] = useState(null);
   const [weight, setWeight] = useState("");
   const [date, setDate] = useState("");
@@ -57,7 +56,7 @@ export default function CocoaRecords() {
       await api.post("/cocoa-records", payload);
       toast.success("Cocoa arrival recorded");
       setAddOpen(false);
-      setForm({ bags: "", status: "unscaled", weight_kg: "", delivered_by: "", location: "", note: "" });
+      setForm(EMPTY);
       load();
     } catch (e) {
       toast.error(apiErr(e));
@@ -88,220 +87,233 @@ export default function CocoaRecords() {
   };
 
   return (
-    <div className="animate-fade-up">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-heading text-4xl font-bold text-[#3B1E10]">Cocoa Store Records</h1>
-          <p className="text-lg text-[#5C4638] mt-1">Cocoa arriving at the store — scaled and unscaled.</p>
-        </div>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="add-cocoa-record-button"
-              className="h-14 px-6 text-lg font-bold bg-[#8C4A27] hover:bg-[#3B1E10] text-white border-2 border-[#3B1E10]/20">
-              <Plus className="w-5 h-5 mr-2" /> Record Arrival
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-[#FAF5EF] max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle className="font-heading text-2xl text-[#3B1E10]">Record Cocoa Arrival</DialogTitle></DialogHeader>
-            <div className="bg-[#F4ECE1] border border-[#E3D5C5] rounded-lg p-3 text-sm text-[#5C4638] flex gap-2">
-              <Info className="w-5 h-5 text-[#8C4A27] shrink-0" />
-              Cocoa arriving does NOT belong to a customer just because they brought it. This is general store stock.
-            </div>
-            <form onSubmit={submit} className="space-y-4 mt-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-base font-semibold">Bags delivered</Label>
-                  <Input type="number" step="0.1" value={form.bags} data-testid="cocoa-bags-input"
-                    onChange={(e) => setForm({ ...form, bags: e.target.value })}
-                    className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
-                </div>
-                <div>
-                  <Label className="text-base font-semibold">Status</Label>
-                  <div className="mt-1 flex gap-2">
-                    <button type="button" data-testid="status-unscaled"
-                      onClick={() => setForm({ ...form, status: "unscaled" })}
-                      className={`flex-1 h-12 rounded-lg font-semibold border-2 ${form.status === "unscaled" ? "bg-[#9A3412] text-white border-[#9A3412]" : "bg-white text-[#24140E] border-[#8C6D58]"}`}>
-                      Unscaled
-                    </button>
-                    <button type="button" data-testid="status-scaled"
-                      onClick={() => setForm({ ...form, status: "scaled" })}
-                      className={`flex-1 h-12 rounded-lg font-semibold border-2 ${form.status === "scaled" ? "bg-[#1E5E3A] text-white border-[#1E5E3A]" : "bg-white text-[#24140E] border-[#8C6D58]"}`}>
-                      Scaled
-                    </button>
+    <div className="ce-page ce-stack">
+      <PageHeader
+        eyebrow="From the farm to the store" image={PODS_CLOSE}
+        title="Cocoa store"
+        subtitle="Every delivery that arrives, weighed or waiting for the scale."
+        actions={
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <button data-testid="add-cocoa-record-button" className="ce-cta">
+                <Plus /> Record arrival
+              </button>
+            </DialogTrigger>
+            <DialogContent className="ce-dialog max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="ce-dialog-title">Record cocoa arrival</DialogTitle>
+              </DialogHeader>
+              <p className="ce-note" style={{ display: "flex", gap: 8 }}>
+                <Info style={{ width: 20, height: 20, flex: "none", color: "#A8451C" }} />
+                Cocoa arriving does not belong to a customer just because they brought it — this is
+                general store stock.
+              </p>
+              <form onSubmit={submit}>
+                <div className="grid grid-cols-2 gap-x-3">
+                  <div className="ce-field">
+                    <label>Bags delivered</label>
+                    <input type="number" step="0.1" value={form.bags} data-testid="cocoa-bags-input"
+                      onChange={(e) => setForm({ ...form, bags: e.target.value })}
+                      className="ce-input" placeholder="0" />
+                  </div>
+                  <div className="ce-field">
+                    <label>Status</label>
+                    <div className="flex gap-2" style={{ marginTop: 8 }}>
+                      <button type="button" data-testid="status-unscaled"
+                        onClick={() => setForm({ ...form, status: "unscaled" })}
+                        className={`ce-pill flex-1 ${form.status === "unscaled" ? "on" : ""}`}>
+                        Unscaled
+                      </button>
+                      <button type="button" data-testid="status-scaled"
+                        onClick={() => setForm({ ...form, status: "scaled" })}
+                        className={`ce-pill flex-1 ${form.status === "scaled" ? "on" : ""}`}>
+                        Scaled
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              {form.status === "scaled" && (
-                <div>
-                  <Label className="text-base font-semibold">Weight (kg) *</Label>
-                  <Input type="number" step="0.01" required value={form.weight_kg} data-testid="cocoa-weight-input"
-                    onChange={(e) => setForm({ ...form, weight_kg: e.target.value })}
-                    className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
+
+                {form.status === "scaled" && (
+                  <div className="ce-field">
+                    <label>Weight (kg) *</label>
+                    <input type="number" step="0.01" required value={form.weight_kg} data-testid="cocoa-weight-input"
+                      onChange={(e) => setForm({ ...form, weight_kg: e.target.value })}
+                      className="ce-input" placeholder="0.00" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-x-3">
+                  <div className="ce-field">
+                    <label>Delivered by / truck</label>
+                    <input value={form.delivered_by} onChange={(e) => setForm({ ...form, delivered_by: e.target.value })}
+                      className="ce-input" placeholder="Name or plate" />
+                  </div>
+                  <div className="ce-field">
+                    <label>Store location / bay</label>
+                    <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
+                      className="ce-input" placeholder="e.g. Bay 2" />
+                  </div>
                 </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-base font-semibold">Delivered by / truck</Label>
-                  <Input value={form.delivered_by} onChange={(e) => setForm({ ...form, delivered_by: e.target.value })}
-                    className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
+
+                <div className="ce-field">
+                  <label>Note</label>
+                  <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+                    className="ce-input" rows={2} placeholder="Anything to remember about this load" />
                 </div>
-                <div>
-                  <Label className="text-base font-semibold">Store location / bay</Label>
-                  <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
-                    className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-base font-semibold">Note</Label>
-                <Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
-                  className="mt-1 text-lg bg-white border-2 border-[#8C6D58]" />
-              </div>
-              <DialogFooter>
-                <Button type="submit" data-testid="save-cocoa-record-button"
-                  className="w-full h-12 text-lg font-bold bg-[#8C4A27] hover:bg-[#3B1E10] text-white">Save Arrival</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+
+                <DialogFooter className="mt-4">
+                  <button type="submit" data-testid="save-cocoa-record-button"
+                    className="ce-cta" style={{ width: "100%" }}>Save arrival</button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       {/* Store summary */}
       {summary && (
-        <div className="grid md:grid-cols-3 gap-4 mb-6">
-          <Card className="p-5 bg-white border-2 border-[#8C6D58]/30 md:col-span-2">
-            <div className="flex items-center gap-2 text-[#1E5E3A] mb-2">
-              <Package className="w-6 h-6" /> <span className="font-heading text-xl font-bold">Currently in Store</span>
+        <div className="grid md:grid-cols-3 gap-5">
+          <div className="ce-card ce-card-leaf md:col-span-2 ce-rise ce-d1">
+            <div className="ce-card-title" style={{ color: "#1E5B38" }}>
+              <Package /> Currently in store
             </div>
-            <p className="text-lg text-[#24140E] leading-relaxed" data-testid="cocoa-store-summary">{summary.description}</p>
-          </Card>
-          <Card className={`p-5 border-2 ${summary.unscaled_records > 0 ? "bg-[#FEF2F2] border-[#DC2626] pulse-warn" : "bg-white border-[#8C6D58]/30"}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <TriangleAlert className={`w-6 h-6 ${summary.unscaled_records > 0 ? "text-[#DC2626]" : "text-[#8C6D58]"}`} />
-              <span className="font-heading text-xl font-bold text-[#24140E]">Unscaled</span>
+            <p className="ce-note" style={{ marginTop: 10, fontSize: 16.5, color: "#2B1A0F" }} data-testid="cocoa-store-summary">
+              {summary.description}
+            </p>
+          </div>
+          <div className={`ce-card ce-rise ce-d2 ${summary.unscaled_records > 0 ? "ce-card-alert pulse-warn" : ""}`}>
+            <div className="ce-card-title" style={{ color: summary.unscaled_records > 0 ? "#8F1D1D" : "#2B1A0F" }}>
+              <TriangleAlert /> Unscaled
             </div>
-            <div className="font-mono text-4xl font-bold text-[#991B1B]" data-testid="unscaled-summary-count">{summary.unscaled_records}</div>
-            <div className="text-sm text-[#5C4638]">deliveries awaiting weight</div>
-          </Card>
+            <div className="ce-figure rd" style={{ fontSize: 42, marginTop: 10 }}
+              data-testid="unscaled-summary-count">{summary.unscaled_records}</div>
+            <div className="ce-note">deliveries awaiting weight</div>
+          </div>
         </div>
       )}
 
       {/* Filter + date */}
-      <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="cocoa-filter">
+      <div className="flex flex-wrap items-center gap-3" data-testid="cocoa-filter">
         {[["", "All"], ["unscaled", "Unscaled"], ["scaled", "Scaled"]].map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)} data-testid={`filter-${v || "all"}`}
-            className={`h-11 px-5 rounded-lg font-semibold border-2 transition-colors ${
-              filter === v ? "bg-[#3B1E10] text-white border-[#3B1E10]" : "bg-white text-[#24140E] border-[#8C6D58]/40 hover:border-[#8C4A27]"}`}>
+            className={`ce-pill ${filter === v ? "on" : ""}`}>
             {l}
           </button>
         ))}
         <div className="flex items-center gap-2 sm:ml-auto">
-          <Calendar className="w-5 h-5 text-[#8C4A27]" />
-          <Input type="date" value={date} data-testid="cocoa-date-picker"
+          <Calendar style={{ width: 20, height: 20, color: "#F0B457" }} />
+          <input type="date" value={date} data-testid="cocoa-date-picker"
             onChange={(e) => setDate(e.target.value)}
-            className="h-11 w-44 bg-white border-2 border-[#8C6D58]/40 text-[#24140E]" />
+            className="ce-input" style={{ marginTop: 0, width: 190 }} />
           {date && (
-            <button onClick={() => setDate("")} data-testid="clear-date"
-              className="h-11 px-3 rounded-lg font-semibold border-2 border-[#8C6D58]/40 bg-white text-[#24140E] hover:border-[#8C4A27] flex items-center gap-1">
-              <X className="w-4 h-4" /> Clear
+            <button onClick={() => setDate("")} data-testid="clear-date" className="ce-pill">
+              <X style={{ width: 16, height: 16, display: "inline", verticalAlign: "-3px" }} /> Clear
             </button>
           )}
         </div>
       </div>
       {date && (
-        <div className="text-base text-[#5C4638] mb-3" data-testid="date-filter-note">
-          Showing deliveries &amp; weighings recorded on <span className="font-bold text-[#24140E]">{date}</span>
+        <div className="ce-note" data-testid="date-filter-note" style={{ color: "#E3D0B4" }}>
+          Showing deliveries &amp; weighings recorded on <b style={{ color: "#FFF6E6" }}>{date}</b>
         </div>
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           {!records ? (
-            <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#8C4A27]" /></div>
+            <div className="ce-spin"><Loader2 className="w-10 h-10 animate-spin" /></div>
           ) : records.length === 0 ? (
-            <Card className="p-12 text-center bg-white border-2 border-[#8C6D58]/30">
-              <Package className="w-12 h-12 mx-auto text-[#8C6D58] mb-3" />
-              <p className="text-xl font-semibold text-[#24140E]">No records here yet</p>
-            </Card>
+            <div className="ce-empty">
+              <Package />
+              <b>No deliveries here yet</b>
+              <span>Record an arrival and it will appear in this list.</span>
+            </div>
           ) : (
             <div className="space-y-3" data-testid="cocoa-records-list">
-              {records.map((r) => (
-                <Card key={r.id} data-testid={`cocoa-record-${r.id}`}
-                  className={`p-5 border-2 ${r.status === "unscaled" ? "bg-[#FEF2F2] border-[#DC2626]/60" : "bg-white border-[#8C6D58]/30"}`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${r.status === "unscaled" ? "bg-[#DC2626]" : "bg-[#1E5E3A]"}`}>
-                        {r.status === "unscaled" ? <TriangleAlert className="w-6 h-6 text-white" /> : <CircleCheck className="w-6 h-6 text-white" />}
-                      </div>
+              {records.map((r, i) => (
+                <article key={r.id} data-testid={`cocoa-record-${r.id}`}
+                  className={`ce-card ce-rise ce-d${(i % 4) + 1} ${r.status === "unscaled" ? "ce-card-alert" : ""}`}
+                  style={{ padding: "18px 20px" }}>
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex items-start gap-4">
+                      <span className="ce-id" style={{ borderRadius: 14, minWidth: 50 }}>
+                        {r.status === "unscaled" ? <TriangleAlert style={{ width: 22, height: 22 }} /> : <CircleCheck style={{ width: 22, height: 22 }} />}
+                      </span>
                       <div>
-                        <div className="font-heading text-xl font-bold text-[#24140E]">
-                          {r.status === "scaled"
-                            ? `${(r.weight_kg || 0).toLocaleString()} kg`
-                            : "Unscaled delivery"}
+                        <div className="ce-row-title">
+                          {r.status === "scaled" ? `${(r.weight_kg || 0).toLocaleString()} kg` : "Unscaled delivery"}
                           {r.bags ? ` · ${r.bags} bag(s)` : ""}
                         </div>
-                        <div className="text-sm text-[#5C4638] flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                        <div className="ce-row-meta" style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", marginTop: 6 }}>
                           <span>{fmtDateTime(r.created_at)}</span>
-                          {r.delivered_by && <span className="flex items-center gap-1"><Truck className="w-4 h-4" />{r.delivered_by}</span>}
-                          {r.location && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{r.location}</span>}
+                          {r.delivered_by && <span className="flex items-center gap-1"><Truck style={{ width: 15, height: 15 }} />{r.delivered_by}</span>}
+                          {r.location && <span className="flex items-center gap-1"><MapPin style={{ width: 15, height: 15 }} />{r.location}</span>}
                         </div>
-                        {r.note && <div className="text-sm text-[#5C4638] mt-1 italic">"{r.note}"</div>}
+                        {r.note && <div className="ce-note" style={{ fontStyle: "italic", marginTop: 6 }}>“{r.note}”</div>}
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 items-end">
                       {r.status === "unscaled" && (
-                        <Button onClick={() => { setWeighOpen(r); setWeight(""); }}
-                          data-testid={`enter-weight-button-${r.id}`}
-                          className="h-10 bg-[#8C4A27] hover:bg-[#3B1E10] text-white font-bold whitespace-nowrap">
-                          <Scale className="w-4 h-4 mr-1" /> Enter Weight
-                        </Button>
+                        <button onClick={() => { setWeighOpen(r); setWeight(""); }}
+                          data-testid={`enter-weight-button-${r.id}`} className="ce-cta sm">
+                          <Scale /> Enter weight
+                        </button>
                       )}
                       {user?.role === "admin" && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <button data-testid={`delete-record-${r.id}`} className="text-[#991B1B] p-2 hover:bg-[#FEF2F2] rounded-lg">
-                              <Trash2 className="w-5 h-5" />
+                            <button data-testid={`delete-record-${r.id}`} aria-label="Delete record"
+                              className="ce-pen" style={{ background: "rgba(176,32,32,.12)", borderColor: "rgba(176,32,32,.35)", color: "#8F1D1D" }}>
+                              <Trash2 />
                             </button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-[#FAF5EF]">
+                          <AlertDialogContent className="ce-dialog">
                             <AlertDialogHeader>
-                              <AlertDialogTitle className="font-heading text-xl text-[#991B1B]">Delete this record?</AlertDialogTitle>
-                              <AlertDialogDescription className="text-[#5C4638]">This confirmed record will be permanently removed.</AlertDialogDescription>
+                              <AlertDialogTitle className="ce-dialog-title" style={{ color: "#8F1D1D" }}>
+                                Delete this record?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription className="ce-note">
+                                The record is removed from the store ledger for good.
+                              </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel className="h-11">Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => del(r.id)} className="h-11 bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold">Delete</AlertDialogAction>
+                              <AlertDialogCancel className="ce-pill">Cancel</AlertDialogCancel>
+                              <AlertDialogAction asChild>
+                                <button onClick={() => del(r.id)} className="ce-cta rust sm">Delete</button>
+                              </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       )}
                     </div>
                   </div>
-                </Card>
+                </article>
               ))}
             </div>
           )}
         </div>
         <div>
-          <Calculator title="Bag & Weight Calculator" />
+          <Calculator title="Bag & weight calculator" />
         </div>
       </div>
 
       {/* Enter weight dialog */}
       <Dialog open={!!weighOpen} onOpenChange={(o) => !o && setWeighOpen(null)}>
-        <DialogContent className="bg-[#FAF5EF]">
-          <DialogHeader><DialogTitle className="font-heading text-2xl text-[#3B1E10]">Enter Weight</DialogTitle></DialogHeader>
-          <form onSubmit={enterWeight} className="space-y-4">
-            <div>
-              <Label className="text-base font-semibold">Scaled weight (kg) *</Label>
-              <Input type="number" step="0.01" required autoFocus value={weight} data-testid="weight-entry-input"
-                onChange={(e) => setWeight(e.target.value)}
-                className="mt-1 h-14 text-xl bg-white border-2 border-[#8C6D58]" />
+        <DialogContent className="ce-dialog">
+          <DialogHeader>
+            <DialogTitle className="ce-dialog-title">Enter weight</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={enterWeight}>
+            <div className="ce-field">
+              <label>Scaled weight (kg) *</label>
+              <input type="number" step="0.01" required autoFocus value={weight} data-testid="weight-entry-input"
+                onChange={(e) => setWeight(e.target.value)} className="ce-input" placeholder="0.00" />
             </div>
-            <DialogFooter>
-              <Button type="submit" data-testid="save-weight-button"
-                className="w-full h-12 text-lg font-bold bg-[#1E5E3A] hover:bg-[#164a2d] text-white">
-                Save & Mark Scaled
-              </Button>
+            <DialogFooter className="mt-4">
+              <button type="submit" data-testid="save-weight-button" className="ce-cta leaf" style={{ width: "100%" }}>
+                Save &amp; mark scaled
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -2,11 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiErr, naira, fmtDateTime, fmtDate } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/PageHeader";
+import { BEANS_CLOSE } from "@/styles/imagery";
 import { Switch } from "@/components/ui/switch";
 import { Calculator } from "@/components/Calculator";
 import {
@@ -162,7 +159,7 @@ export default function CustomerProfile() {
   };
 
   if (!c)
-    return <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#8C4A27]" /></div>;
+    return <div className="ce-spin"><Loader2 className="w-10 h-10 animate-spin" /></div>;
 
   const fertTotals = (c.fertilizer || []).reduce(
     (acc, f) => ({ value: acc.value + (f.value || 0), paid: acc.paid + (f.paid || 0), balance: acc.balance + (f.balance || 0) }),
@@ -170,57 +167,57 @@ export default function CustomerProfile() {
   );
 
   return (
-    <div className="animate-fade-up">
-      <button onClick={() => navigate("/customers")} data-testid="back-to-customers"
-        className="flex items-center gap-2 text-[#5C4638] hover:text-[#8C4A27] font-semibold mb-4">
-        <ArrowLeft className="w-5 h-5" /> Back to customers
+    <div className="ce-page ce-stack">
+      <button onClick={() => navigate("/customers")} data-testid="back-to-customers" className="ce-cta ghost sm"
+        style={{ alignSelf: "flex-start" }}>
+        <ArrowLeft /> Back to customers
       </button>
 
+      <PageHeader
+        eyebrow={`Customer #${c.customer_id}`} image={BEANS_CLOSE}
+        title={c.full_name}
+        subtitle={`Added ${fmtDate(c.date_added)} · Currently owing ${naira(c.balance)}`}
+        actions={
+          <span className="ce-feat">
+            {editing ? <Unlock /> : <Lock />}
+            {editing ? "Editing" : "Read-only"}
+            <Switch checked={editing} onCheckedChange={setEditing} data-testid="edit-lock-switch" />
+          </span>
+        }
+      />
+
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Header card */}
-          <Card className="p-6 bg-white border-2 border-[#8C6D58]/30">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="font-mono font-bold text-2xl text-[#8C4A27] bg-[#F4ECE1] rounded-xl px-4 py-3">
-                  #{c.customer_id}
-                </div>
-                <div>
-                  <h1 className="font-heading text-3xl font-bold text-[#24140E]" data-testid="customer-profile-name">
-                    {c.full_name}
-                  </h1>
-                  <div className="text-[#5C4638]">Added {fmtDate(c.date_added)}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 bg-[#F4ECE1] px-3 py-2 rounded-lg border-2 border-[#8C6D58]/40">
-                {editing ? <Unlock className="w-5 h-5 text-[#1E5E3A]" /> : <Lock className="w-5 h-5 text-[#5C4638]" />}
-                <span className="text-sm font-semibold text-[#24140E] hidden sm:inline">
-                  {editing ? "Editing" : "Read-only"}
-                </span>
-                <Switch checked={editing} onCheckedChange={setEditing} data-testid="edit-lock-switch" />
-              </div>
+        <div className="lg:col-span-2 ce-stack">
+          {/* Details */}
+          <div className="ce-card ce-rise ce-d1">
+            <span className="ce-sr" data-testid="customer-profile-name">{c.full_name}</span>
+            <div className="ce-card-title">
+              <Users style={{ color: "#A8451C" }} /> Details
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4 mt-6">
+            <div className="grid sm:grid-cols-2 gap-5" style={{ marginTop: 16 }}>
               {editing ? (
                 <>
-                  <Field label="Full name"><Input value={form.full_name} data-testid="edit-name-input"
-                    onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                    className="bg-white border-2 border-[#8C6D58] h-11" /></Field>
-                  <Field label="Phone"><Input value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="bg-white border-2 border-[#8C6D58] h-11" /></Field>
-                  <Field label="Address"><Input value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    className="bg-white border-2 border-[#8C6D58] h-11" /></Field>
-                  <Field label="Notes"><Textarea value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    className="bg-white border-2 border-[#8C6D58]" /></Field>
+                  <Field label="Full name">
+                    <input value={form.full_name} data-testid="edit-name-input"
+                      onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="ce-input" />
+                  </Field>
+                  <Field label="Phone">
+                    <input value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })} className="ce-input" />
+                  </Field>
+                  <Field label="Address">
+                    <input value={form.address}
+                      onChange={(e) => setForm({ ...form, address: e.target.value })} className="ce-input" />
+                  </Field>
+                  <Field label="Notes">
+                    <textarea value={form.notes} rows={2}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })} className="ce-input" />
+                  </Field>
                   <div className="sm:col-span-2">
-                    <Button onClick={saveEdits} data-testid="save-edits-button"
-                      className="h-11 bg-[#8C4A27] hover:bg-[#3B1E10] text-white font-bold">
-                      <Save className="w-4 h-4 mr-2" /> Save changes
-                    </Button>
+                    <button onClick={saveEdits} data-testid="save-edits-button" className="ce-cta">
+                      <Save /> Save changes
+                    </button>
                   </div>
                 </>
               ) : (
@@ -232,91 +229,108 @@ export default function CustomerProfile() {
                 </>
               )}
             </div>
-          </Card>
+          </div>
 
           {/* Caretakers */}
-          <Card className="p-6 bg-white border-2 border-[#8C6D58]/30">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-heading text-2xl font-bold text-[#3B1E10] flex items-center gap-2">
-                <Users className="w-6 h-6" /> Caretakers
-              </h2>
+          <div className="ce-card ce-rise ce-d2">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="ce-card-title"><Users style={{ color: "#A8451C" }} /> Caretakers</div>
               <Dialog open={ctAddOpen} onOpenChange={setCtAddOpen}>
                 <DialogTrigger asChild>
-                  <Button data-testid="add-caretaker-button" className="h-11 bg-[#8C4A27] hover:bg-[#3B1E10] text-white font-bold">
-                    <UserPlus className="w-4 h-4 mr-1" /> Add Caretaker
-                  </Button>
+                  <button data-testid="add-caretaker-button" className="ce-cta sm">
+                    <UserPlus /> Add caretaker
+                  </button>
                 </DialogTrigger>
-                <DialogContent className="bg-[#FAF5EF]">
-                  <DialogHeader><DialogTitle className="font-heading text-2xl text-[#3B1E10]">Add Caretaker</DialogTitle></DialogHeader>
-                  <form onSubmit={addCaretaker} className="space-y-4">
-                    <Field label="Name *"><Input required value={newCt.name} data-testid="new-caretaker-name"
-                      onChange={(e) => setNewCt({ ...newCt, name: e.target.value })}
-                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Relationship"><Input value={newCt.relationship} data-testid="new-caretaker-relationship"
-                        onChange={(e) => setNewCt({ ...newCt, relationship: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                      <Field label="Phone"><Input value={newCt.phone} data-testid="new-caretaker-phone"
-                        onChange={(e) => setNewCt({ ...newCt, phone: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                <DialogContent className="ce-dialog">
+                  <DialogHeader>
+                    <DialogTitle className="ce-dialog-title">Add caretaker</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={addCaretaker}>
+                    <Field label="Name *">
+                      <input required value={newCt.name} data-testid="new-caretaker-name"
+                        onChange={(e) => setNewCt({ ...newCt, name: e.target.value })} className="ce-input" />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-x-3">
+                      <Field label="Relationship">
+                        <input value={newCt.relationship} data-testid="new-caretaker-relationship"
+                          onChange={(e) => setNewCt({ ...newCt, relationship: e.target.value })} className="ce-input" />
+                      </Field>
+                      <Field label="Phone">
+                        <input value={newCt.phone} data-testid="new-caretaker-phone"
+                          onChange={(e) => setNewCt({ ...newCt, phone: e.target.value })} className="ce-input" />
+                      </Field>
                     </div>
-                    <DialogFooter>
-                      <Button type="submit" data-testid="save-new-caretaker"
-                        className="w-full h-12 bg-[#8C4A27] hover:bg-[#3B1E10] text-white font-bold">Add Caretaker</Button>
+                    <DialogFooter className="mt-4">
+                      <button type="submit" data-testid="save-new-caretaker" className="ce-cta" style={{ width: "100%" }}>
+                        Add caretaker
+                      </button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
               </Dialog>
             </div>
-            <p className="text-sm text-[#5C4638] mb-4 -mt-2">
-              A caretaker's own money (cash they collected for personal use) is tracked separately from the customer's money below.
+            <p className="ce-note" style={{ marginTop: 8 }}>
+              A caretaker's own money (cash they collected for personal use) is tracked separately from
+              the customer's money below.
             </p>
             {c.caretakers?.length ? (
-              <div className="grid sm:grid-cols-2 gap-4" data-testid="caretakers-list">
+              <div className="grid sm:grid-cols-2 gap-4" style={{ marginTop: 16 }} data-testid="caretakers-list">
                 {c.caretakers.map((ct, i) => (
                   <CaretakerCard key={ct.id || i} customerId={id} index={i} ct={ct} isAdmin={user?.role === "admin"} onDone={load} />
                 ))}
               </div>
             ) : (
-              <p className="text-[#5C4638]">No caretakers yet. Add one above.</p>
+              <p className="ce-note" style={{ marginTop: 12 }}>No caretakers yet — add one above.</p>
             )}
-          </Card>
+          </div>
 
-          {/* Fertilizer feed */}
-          <Card className="p-6 bg-white border-2 border-[#8C6D58]/30" data-testid="fertilizer-section">
-            <div className="flex items-center justify-between mb-4">
+          {/* Fertilizer */}
+          <div className="ce-card ce-rise ce-d3" data-testid="fertilizer-section">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h2 className="font-heading text-2xl font-bold text-[#1E5E3A] flex items-center gap-2">
-                  <Sprout className="w-6 h-6" /> Fertilizer Collected
-                </h2>
-                <p className="text-sm text-[#5C4638] mt-1">Separate from money owed — tracks fertilizer the customer took and how much of it has been paid.</p>
+                <div className="ce-card-title" style={{ color: "#1E5B38" }}>
+                  <Sprout /> Fertilizer collected
+                </div>
+                <p className="ce-note" style={{ marginTop: 8 }}>
+                  Separate from money owed — what the customer took, and how much of it they have paid.
+                </p>
               </div>
               <Dialog open={fertOpen} onOpenChange={setFertOpen}>
                 <DialogTrigger asChild>
-                  <Button data-testid="add-fertilizer-button" className="h-11 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">
-                    <Plus className="w-4 h-4 mr-1" /> Add
-                  </Button>
+                  <button data-testid="add-fertilizer-button" className="ce-cta leaf sm">
+                    <Plus /> Add
+                  </button>
                 </DialogTrigger>
-                <DialogContent className="bg-[#FAF5EF]">
-                  <DialogHeader><DialogTitle className="font-heading text-2xl text-[#1E5E3A]">Record Fertilizer Collected</DialogTitle></DialogHeader>
-                  <form onSubmit={addFertilizer} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Quantity *"><Input type="number" step="0.1" required value={fert.quantity}
-                        data-testid="fertilizer-quantity-input" onChange={(e) => setFert({ ...fert, quantity: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                      <Field label="Unit"><Input value={fert.unit} data-testid="fertilizer-unit-input"
-                        onChange={(e) => setFert({ ...fert, unit: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
+                <DialogContent className="ce-dialog">
+                  <DialogHeader>
+                    <DialogTitle className="ce-dialog-title" style={{ color: "#1E5B38" }}>
+                      Record fertilizer collected
+                    </DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={addFertilizer}>
+                    <div className="grid grid-cols-2 gap-x-3">
+                      <Field label="Quantity *">
+                        <input type="number" step="0.1" required value={fert.quantity} data-testid="fertilizer-quantity-input"
+                          onChange={(e) => setFert({ ...fert, quantity: e.target.value })} className="ce-input" />
+                      </Field>
+                      <Field label="Unit">
+                        <input value={fert.unit} data-testid="fertilizer-unit-input"
+                          onChange={(e) => setFert({ ...fert, unit: e.target.value })} className="ce-input" />
+                      </Field>
                     </div>
-                    <Field label="Value (₦, optional)"><Input type="number" step="0.01" value={fert.value}
-                      data-testid="fertilizer-value-input" onChange={(e) => setFert({ ...fert, value: e.target.value })}
-                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                    <Field label="Note"><Input value={fert.note} data-testid="fertilizer-note-input"
-                      placeholder="e.g. NPK 15-15-15, for main farm" onChange={(e) => setFert({ ...fert, note: e.target.value })}
-                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                    <DialogFooter>
-                      <Button type="submit" data-testid="save-fertilizer-button"
-                        className="w-full h-12 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">Record</Button>
+                    <Field label="Value (₦, optional)">
+                      <input type="number" step="0.01" value={fert.value} data-testid="fertilizer-value-input"
+                        onChange={(e) => setFert({ ...fert, value: e.target.value })} className="ce-input" />
+                    </Field>
+                    <Field label="Note">
+                      <input value={fert.note} data-testid="fertilizer-note-input"
+                        placeholder="e.g. NPK 15-15-15, for main farm"
+                        onChange={(e) => setFert({ ...fert, note: e.target.value })} className="ce-input" />
+                    </Field>
+                    <DialogFooter className="mt-4">
+                      <button type="submit" data-testid="save-fertilizer-button" className="ce-cta leaf" style={{ width: "100%" }}>
+                        Record
+                      </button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -324,68 +338,61 @@ export default function CustomerProfile() {
             </div>
 
             {fertTotals.value > 0 && (
-              <div className="mb-4 flex flex-wrap gap-x-6 gap-y-2 bg-[#EAF3EC] rounded-lg px-4 py-3 border border-[#BBD8C2]" data-testid="fertilizer-totals">
-                <div className="text-sm"><span className="text-[#5C4638]">Total value: </span>
-                  <span className="font-mono font-bold text-[#24140E]">{naira(fertTotals.value)}</span></div>
-                <div className="text-sm"><span className="text-[#5C4638]">Paid: </span>
-                  <span className="font-mono font-bold text-[#1E5E3A]">{naira(fertTotals.paid)}</span></div>
-                <div className="text-sm"><span className="text-[#5C4638]">Still owing: </span>
-                  <span className={`font-mono font-bold ${fertTotals.balance > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`} data-testid="fertilizer-total-balance">{naira(fertTotals.balance)}</span></div>
+              <div className="ce-sub ce-sub-leaf" style={{ marginTop: 16 }} data-testid="fertilizer-totals">
+                <div className="flex flex-wrap gap-x-8 gap-y-2">
+                  <Total label="Total value" value={naira(fertTotals.value)} />
+                  <Total label="Paid" value={naira(fertTotals.paid)} tone="gr" />
+                  <Total label="Still owing" value={naira(fertTotals.balance)} tone={fertTotals.balance > 0 ? "rd" : "gr"}
+                    testid="fertilizer-total-balance" />
+                </div>
               </div>
             )}
 
             {c.fertilizer?.length ? (
-              <div className="space-y-3" data-testid="fertilizer-list">
+              <div className="space-y-3" style={{ marginTop: 16 }} data-testid="fertilizer-list">
                 {c.fertilizer.map((f) => (
-                  <div key={f.id} className="p-4 rounded-lg border bg-[#F4ECE1] border-[#E3D5C5]" data-testid={`fertilizer-record-${f.id}`}>
+                  <div key={f.id} className="ce-sub" data-testid={`fertilizer-record-${f.id}`}>
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#1E5E3A] shrink-0">
-                        <Sprout className="w-5 h-5 text-white" />
-                      </div>
+                      <span className="ce-id" style={{ borderRadius: 13, minWidth: 46, color: "#1E5B38", background: "linear-gradient(180deg,#E6F3E9,#CFE6D6)" }}>
+                        <Sprout style={{ width: 20, height: 20 }} />
+                      </span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-[#24140E]">
+                        <div style={{ fontWeight: 700, color: "#2B1A0F" }}>
                           {f.quantity} {f.unit} {f.note ? `— ${f.note}` : ""}
                         </div>
-                        <div className="text-sm text-[#5C4638]">{fmtDateTime(f.date)} · {f.by}</div>
+                        <div className="ce-note" style={{ fontSize: 13 }}>{fmtDateTime(f.date)} · {f.by}</div>
                       </div>
                       <FertilizerStatusBadge status={f.payment_status} />
                     </div>
 
                     {f.value > 0 && (
                       <>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                          <div className="bg-white rounded-lg border border-[#E3D5C5] py-2">
-                            <div className="text-xs uppercase tracking-wide text-[#5C4638]">Value</div>
-                            <div className="font-mono font-bold text-[#24140E]">{naira(f.value)}</div>
-                          </div>
-                          <div className="bg-white rounded-lg border border-[#E3D5C5] py-2">
-                            <div className="text-xs uppercase tracking-wide text-[#5C4638]">Paid</div>
-                            <div className="font-mono font-bold text-[#1E5E3A]" data-testid={`fertilizer-paid-${f.id}`}>{naira(f.paid)}</div>
-                          </div>
-                          <div className="bg-white rounded-lg border border-[#E3D5C5] py-2">
-                            <div className="text-xs uppercase tracking-wide text-[#5C4638]">Balance</div>
-                            <div className={`font-mono font-bold ${f.balance > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`} data-testid={`fertilizer-balance-${f.id}`}>{naira(f.balance)}</div>
-                          </div>
+                        <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
+                          <Mini label="Value" value={naira(f.value)} />
+                          <Mini label="Paid" value={naira(f.paid)} tone="gr" testid={`fertilizer-paid-${f.id}`} />
+                          <Mini label="Balance" value={naira(f.balance)} tone={f.balance > 0 ? "rd" : "gr"}
+                            testid={`fertilizer-balance-${f.id}`} />
                         </div>
 
                         {f.payments?.length > 0 && (
-                          <div className="mt-2 space-y-1 max-h-28 overflow-y-auto" data-testid={`fertilizer-payments-${f.id}`}>
+                          <div className="space-y-1" style={{ marginTop: 10, maxHeight: 120, overflowY: "auto" }}
+                            data-testid={`fertilizer-payments-${f.id}`}>
                             {f.payments.map((p) => (
-                              <div key={p.id} className="flex items-center justify-between text-sm gap-2">
-                                <span className="text-[#5C4638] truncate">
+                              <div key={p.id} className="flex items-center justify-between gap-2" style={{ fontSize: 13.5 }}>
+                                <span className="ce-note truncate">
                                   Paid{p.note ? ` · ${p.note}` : ""} · {fmtDateTime(p.date)}
                                 </span>
-                                <span className="font-mono font-bold text-[#1E5E3A] shrink-0">−{naira(p.amount)}</span>
+                                <span className="ce-figure gr" style={{ fontSize: 14 }}>−{naira(p.amount)}</span>
                               </div>
                             ))}
                           </div>
                         )}
 
                         {f.balance > 0 && (
-                          <Button onClick={() => openFertPay(f)} data-testid={`fertilizer-pay-${f.id}`}
-                            className="mt-3 h-10 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">
-                            <HandCoins className="w-4 h-4 mr-1" /> Record payment
-                          </Button>
+                          <button onClick={() => openFertPay(f)} data-testid={`fertilizer-pay-${f.id}`}
+                            className="ce-cta leaf sm" style={{ marginTop: 12 }}>
+                            <HandCoins /> Record payment
+                          </button>
                         )}
                       </>
                     )}
@@ -393,69 +400,86 @@ export default function CustomerProfile() {
                 ))}
               </div>
             ) : (
-              <p className="text-[#5C4638]">No fertilizer collected yet.</p>
+              <p className="ce-note" style={{ marginTop: 12 }}>No fertilizer collected yet.</p>
             )}
 
             <Dialog open={fertPayOpen} onOpenChange={setFertPayOpen}>
-              <DialogContent className="bg-[#FAF5EF]">
-                <DialogHeader><DialogTitle className="font-heading text-2xl text-[#1E5E3A]">Record Fertilizer Payment</DialogTitle></DialogHeader>
+              <DialogContent className="ce-dialog">
+                <DialogHeader>
+                  <DialogTitle className="ce-dialog-title" style={{ color: "#1E5B38" }}>
+                    Record fertilizer payment
+                  </DialogTitle>
+                </DialogHeader>
                 {fertPayTarget && (
-                  <form onSubmit={submitFertPay} className="space-y-4">
-                    <div className="rounded-lg bg-white border-2 border-[#8C6D58] p-3 text-base">
-                      <div className="text-[#5C4638]">
+                  <form onSubmit={submitFertPay}>
+                    <div className="ce-mini">
+                      <div className="ce-note">
                         {fertPayTarget.quantity} {fertPayTarget.unit}{fertPayTarget.note ? ` — ${fertPayTarget.note}` : ""}
                       </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-[#5C4638]">Balance owing</span>
-                        <span className="font-mono font-bold text-[#9A3412]" data-testid="fert-pay-balance">{naira(fertPayTarget.balance)}</span>
+                      <div className="flex items-center justify-between" style={{ marginTop: 6 }}>
+                        <span className="ce-note">Balance owing</span>
+                        <span className="ce-figure rd" style={{ fontSize: 18 }} data-testid="fert-pay-balance">
+                          {naira(fertPayTarget.balance)}
+                        </span>
                       </div>
                     </div>
-                    <Field label="Amount paid (₦) *"><Input type="number" step="0.01" min="0" required value={fertPay.amount}
-                      data-testid="fert-pay-amount" onChange={(e) => setFertPay({ ...fertPay, amount: e.target.value })}
-                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                    <Field label="Note"><Input value={fertPay.note} data-testid="fert-pay-note"
-                      placeholder="e.g. part payment" onChange={(e) => setFertPay({ ...fertPay, note: e.target.value })}
-                      className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                    <DialogFooter className="gap-2 sm:gap-2 sm:justify-between">
-                      <Button type="button" variant="outline" onClick={payFullFert} data-testid="fert-pay-full"
-                        className="h-12 font-bold border-2 border-[#1E5E3A] text-[#1E5E3A] hover:bg-[#EAF3EC]">Pay full balance</Button>
-                      <Button type="submit" data-testid="fert-pay-save"
-                        className="h-12 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">Record payment</Button>
+                    <Field label="Amount paid (₦) *">
+                      <input type="number" step="0.01" min="0" required value={fertPay.amount} data-testid="fert-pay-amount"
+                        onChange={(e) => setFertPay({ ...fertPay, amount: e.target.value })} className="ce-input" />
+                    </Field>
+                    <Field label="Note">
+                      <input value={fertPay.note} data-testid="fert-pay-note" placeholder="e.g. part payment"
+                        onChange={(e) => setFertPay({ ...fertPay, note: e.target.value })} className="ce-input" />
+                    </Field>
+                    <DialogFooter className="mt-4">
+                      <button type="button" onClick={payFullFert} data-testid="fert-pay-full" className="ce-cta pale sm">
+                        Pay full balance
+                      </button>
+                      <button type="submit" data-testid="fert-pay-save" className="ce-cta leaf sm">
+                        Record payment
+                      </button>
                     </DialogFooter>
                   </form>
                 )}
               </DialogContent>
             </Dialog>
-          </Card>
+          </div>
 
-          {/* Debt & repayment actions */}
-          <Card className="p-6 bg-white border-2 border-[#8C6D58]/30">
-            <div className="flex items-center justify-between mb-4">
+          {/* Money owed */}
+          <div className="ce-card ce-rise ce-d4">
+            <div className="flex items-end justify-between gap-4 flex-wrap">
               <div>
-                <div className="text-base font-semibold text-[#5C4638]">Current Owing (money)</div>
-                <div className={`font-mono font-bold text-4xl ${c.balance > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`}
-                  data-testid="customer-balance">{naira(c.balance)}</div>
+                <div className="ce-label">Current owing (money)</div>
+                <div className={`ce-figure ${c.balance > 0 ? "rd" : "gr"}`} style={{ fontSize: 42, marginTop: 6 }}
+                  data-testid="customer-balance">
+                  {naira(c.balance)}
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Dialog open={debtOpen} onOpenChange={setDebtOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="add-debt-button"
-                      className="h-11 bg-[#9A3412] hover:bg-[#7c2d12] text-white font-bold">
-                      <TrendingUp className="w-4 h-4 mr-1" /> Add Debt
-                    </Button>
+                    <button data-testid="add-debt-button" className="ce-cta rust sm">
+                      <TrendingUp /> Add debt
+                    </button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#FAF5EF]">
-                    <DialogHeader><DialogTitle className="font-heading text-2xl text-[#3B1E10]">Record Money Owed</DialogTitle></DialogHeader>
-                    <form onSubmit={addDebt} className="space-y-4">
-                      <Field label="Amount (₦) *"><Input type="number" step="0.01" required value={debt.amount}
-                        data-testid="debt-amount-input" onChange={(e) => setDebt({ ...debt, amount: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                      <Field label="Reason *"><Input required value={debt.reason} data-testid="debt-reason-input"
-                        placeholder="e.g. Fertilizer advance" onChange={(e) => setDebt({ ...debt, reason: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                      <DialogFooter>
-                        <Button type="submit" data-testid="save-debt-button"
-                          className="w-full h-12 bg-[#9A3412] hover:bg-[#7c2d12] text-white font-bold">Record Debt</Button>
+                  <DialogContent className="ce-dialog">
+                    <DialogHeader>
+                      <DialogTitle className="ce-dialog-title">Record money owed</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={addDebt}>
+                      <Field label="Amount (₦) *">
+                        <input type="number" step="0.01" required value={debt.amount} data-testid="debt-amount-input"
+                          onChange={(e) => setDebt({ ...debt, amount: e.target.value })} className="ce-input" />
+                      </Field>
+                      <Field label="Reason *">
+                        <input required value={debt.reason} data-testid="debt-reason-input"
+                          placeholder="e.g. Fertilizer advance"
+                          onChange={(e) => setDebt({ ...debt, reason: e.target.value })} className="ce-input" />
+                      </Field>
+                      <DialogFooter className="mt-4">
+                        <button type="submit" data-testid="save-debt-button" className="ce-cta rust" style={{ width: "100%" }}>
+                          Record debt
+                        </button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
@@ -463,23 +487,27 @@ export default function CustomerProfile() {
 
                 <Dialog open={payOpen} onOpenChange={setPayOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="add-payment-button"
-                      className="h-11 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">
-                      <TrendingDown className="w-4 h-4 mr-1" /> Repayment
-                    </Button>
+                    <button data-testid="add-payment-button" className="ce-cta leaf sm">
+                      <TrendingDown /> Repayment
+                    </button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#FAF5EF]">
-                    <DialogHeader><DialogTitle className="font-heading text-2xl text-[#3B1E10]">Record Repayment</DialogTitle></DialogHeader>
-                    <form onSubmit={addPayment} className="space-y-4">
-                      <Field label="Amount (₦) *"><Input type="number" step="0.01" required value={pay.amount}
-                        data-testid="payment-amount-input" onChange={(e) => setPay({ ...pay, amount: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                      <Field label="Note"><Input value={pay.note} data-testid="payment-note-input"
-                        placeholder="e.g. Cash payment" onChange={(e) => setPay({ ...pay, note: e.target.value })}
-                        className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                      <DialogFooter>
-                        <Button type="submit" data-testid="save-payment-button"
-                          className="w-full h-12 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">Record Repayment</Button>
+                  <DialogContent className="ce-dialog">
+                    <DialogHeader>
+                      <DialogTitle className="ce-dialog-title">Record repayment</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={addPayment}>
+                      <Field label="Amount (₦) *">
+                        <input type="number" step="0.01" required value={pay.amount} data-testid="payment-amount-input"
+                          onChange={(e) => setPay({ ...pay, amount: e.target.value })} className="ce-input" />
+                      </Field>
+                      <Field label="Note">
+                        <input value={pay.note} data-testid="payment-note-input" placeholder="e.g. Cash payment"
+                          onChange={(e) => setPay({ ...pay, note: e.target.value })} className="ce-input" />
+                      </Field>
+                      <DialogFooter className="mt-4">
+                        <button type="submit" data-testid="save-payment-button" className="ce-cta leaf" style={{ width: "100%" }}>
+                          Record repayment
+                        </button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
@@ -487,60 +515,65 @@ export default function CustomerProfile() {
               </div>
             </div>
 
-            {/* History */}
-            <h3 className="font-heading text-xl font-semibold text-[#3B1E10] mt-2 mb-3">Owing History</h3>
+            <hr className="ce-hairline" style={{ margin: "20px 0 16px" }} />
+
+            <div className="ce-label">Owing history</div>
             {c.history?.length ? (
-              <div className="space-y-2" data-testid="customer-history">
+              <div className="space-y-2" style={{ marginTop: 12 }} data-testid="customer-history">
                 {c.history.map((h, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-[#F4ECE1] border border-[#E3D5C5]">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      h.type === "debt" ? "bg-[#9A3412]" : "bg-[#1E5E3A]"}`}>
-                      {h.type === "debt" ? <Banknote className="w-5 h-5 text-white" /> : <HandCoins className="w-5 h-5 text-white" />}
-                    </div>
+                  <div key={i} className="ce-mini flex items-center gap-3">
+                    <span className="ce-id" style={{ minWidth: 44, borderRadius: 12, padding: "7px 0", color: h.type === "debt" ? "#8F1D1D" : "#1E5B38" }}>
+                      {h.type === "debt" ? <Banknote style={{ width: 19, height: 19 }} /> : <HandCoins style={{ width: 19, height: 19 }} />}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-[#24140E]">
+                      <div style={{ fontWeight: 700, color: "#2B1A0F" }}>
                         {h.type === "debt" ? "Debt" : "Repayment"} — {h.reason || h.note || "—"}
                       </div>
-                      <div className="text-sm text-[#5C4638]">{fmtDateTime(h.date)} · by {h.by || "—"}</div>
+                      <div className="ce-note" style={{ fontSize: 13 }}>{fmtDateTime(h.date)} · by {h.by || "—"}</div>
                     </div>
-                    <div className={`font-mono font-bold text-lg ${h.type === "debt" ? "text-[#9A3412]" : "text-[#1E5E3A]"}`}>
+                    <div className={`ce-figure ${h.type === "debt" ? "rd" : "gr"}`} style={{ fontSize: 18 }}>
                       {h.type === "debt" ? "+" : "−"}{naira(h.amount)}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-[#5C4638]">No debt or repayment records yet.</p>
+              <p className="ce-note" style={{ marginTop: 12 }}>No debt or repayment records yet.</p>
             )}
-          </Card>
+          </div>
 
           {user?.role === "admin" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" data-testid="delete-customer-button"
-                  className="border-2 border-[#991B1B] text-[#991B1B] hover:bg-[#FEF2F2] font-semibold h-11">
-                  <Trash2 className="w-4 h-4 mr-2" /> Delete customer (owner only)
-                </Button>
+                <button data-testid="delete-customer-button" className="ce-cta ghost sm" style={{ alignSelf: "flex-start" }}>
+                  <Trash2 /> Delete customer (owner only)
+                </button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-[#FAF5EF]">
+              <AlertDialogContent className="ce-dialog">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-heading text-2xl text-[#991B1B]">Delete this customer?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-base text-[#5C4638]">
-                    This permanently removes #{c.customer_id} {c.full_name} and all their debt & repayment history. This cannot be undone.
+                  <AlertDialogTitle className="ce-dialog-title" style={{ color: "#8F1D1D" }}>
+                    Delete this customer?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="ce-note">
+                    This permanently removes #{c.customer_id} {c.full_name} and all their debt &amp;
+                    repayment history. This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel className="h-11">Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={deleteCustomer} data-testid="confirm-delete-customer"
-                    className="h-11 bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold">Yes, delete</AlertDialogAction>
+                  <AlertDialogCancel className="ce-pill">Cancel</AlertDialogCancel>
+                  <AlertDialogAction asChild>
+                    <button onClick={deleteCustomer} data-testid="confirm-delete-customer" className="ce-cta rust sm">
+                      Yes, delete
+                    </button>
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           )}
         </div>
 
-        <div className="space-y-6">
-          <Calculator title="Debt & Bag Calculator" />
+        <div className="ce-stack">
+          <Calculator title="Debt & bag calculator" />
         </div>
       </div>
     </div>
@@ -586,93 +619,132 @@ function CaretakerCard({ customerId, index, ct, isAdmin, onDone }) {
   const bal = ct.balance || 0;
 
   return (
-    <div className="bg-[#F4ECE1] rounded-xl p-4 border border-[#E3D5C5]" data-testid={`caretaker-card-${index}`}>
-      <div className="flex items-start justify-between">
+    <div className="ce-sub" data-testid={`caretaker-card-${index}`}>
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-semibold text-lg text-[#24140E] truncate">{ct.name}</div>
-          <div className="text-sm text-[#5C4638]">{ct.relationship || "Caretaker"}{ct.phone ? ` · ${ct.phone}` : ""}</div>
+          <div style={{ fontWeight: 700, fontSize: 17, color: "#2B1A0F" }} className="truncate">{ct.name}</div>
+          <div className="ce-note" style={{ fontSize: 13 }}>
+            {ct.relationship || "Caretaker"}{ct.phone ? ` · ${ct.phone}` : ""}
+          </div>
         </div>
         {isAdmin && (
-          <button onClick={remove} data-testid={`remove-caretaker-${index}`} className="text-[#991B1B] p-1.5 hover:bg-white rounded-lg shrink-0">
-            <Trash2 className="w-4 h-4" />
+          <button onClick={remove} data-testid={`remove-caretaker-${index}`} aria-label={`Remove ${ct.name}`}
+            className="ce-pen" style={{ background: "rgba(176,32,32,.12)", borderColor: "rgba(176,32,32,.35)", color: "#8F1D1D" }}>
+            <Trash2 />
           </button>
         )}
       </div>
 
       {/* Caretaker's own money */}
-      <div className="mt-3 bg-white rounded-lg p-3 border border-[#E3D5C5]">
-        <div className="flex items-center justify-between gap-2">
+      <div className="ce-mini" style={{ marginTop: 12 }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wide text-[#5C4638] flex items-center gap-1"><Wallet className="w-3.5 h-3.5" /> Caretaker's own money</div>
-            <div className={`font-mono font-bold text-xl ${bal > 0 ? "text-[#9A3412]" : "text-[#1E5E3A]"}`} data-testid={`caretaker-balance-${index}`}>{naira(bal)}</div>
+            <div className="ce-label" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <Wallet style={{ width: 14, height: 14 }} /> Caretaker's own money
+            </div>
+            <div className={`ce-figure ${bal > 0 ? "rd" : "gr"}`} style={{ fontSize: 22, marginTop: 4 }}
+              data-testid={`caretaker-balance-${index}`}>
+              {naira(bal)}
+            </div>
           </div>
-          <div className="flex gap-1.5 shrink-0">
+          <div className="flex gap-2">
             <Dialog open={debtOpen} onOpenChange={setDebtOpen}>
               <DialogTrigger asChild>
-                <Button data-testid={`caretaker-add-debt-${index}`} className="h-9 px-3 bg-[#9A3412] hover:bg-[#7c2d12] text-white text-sm font-bold">Debt</Button>
+                <button data-testid={`caretaker-add-debt-${index}`} className="ce-cta rust sm">Debt</button>
               </DialogTrigger>
-              <DialogContent className="bg-[#FAF5EF]">
-                <DialogHeader><DialogTitle className="font-heading text-xl text-[#3B1E10]">Money collected by {ct.name}</DialogTitle></DialogHeader>
-                <form onSubmit={addDebt} className="space-y-3">
-                  <Field label="Amount (₦) *"><Input type="number" step="0.01" required value={debt.amount} data-testid={`caretaker-debt-amount-${index}`}
-                    onChange={(e) => setDebt({ ...debt, amount: e.target.value })} className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                  <Field label="Reason *"><Input required value={debt.reason} data-testid={`caretaker-debt-reason-${index}`}
-                    placeholder="e.g. Personal cash advance" onChange={(e) => setDebt({ ...debt, reason: e.target.value })} className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                  <DialogFooter><Button type="submit" data-testid={`caretaker-save-debt-${index}`} className="w-full h-12 bg-[#9A3412] hover:bg-[#7c2d12] text-white font-bold">Record</Button></DialogFooter>
+              <DialogContent className="ce-dialog">
+                <DialogHeader>
+                  <DialogTitle className="ce-dialog-title">Money collected by {ct.name}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={addDebt}>
+                  <Field label="Amount (₦) *">
+                    <input type="number" step="0.01" required value={debt.amount} data-testid={`caretaker-debt-amount-${index}`}
+                      onChange={(e) => setDebt({ ...debt, amount: e.target.value })} className="ce-input" />
+                  </Field>
+                  <Field label="Reason *">
+                    <input required value={debt.reason} data-testid={`caretaker-debt-reason-${index}`}
+                      placeholder="e.g. Personal cash advance"
+                      onChange={(e) => setDebt({ ...debt, reason: e.target.value })} className="ce-input" />
+                  </Field>
+                  <DialogFooter className="mt-4">
+                    <button type="submit" data-testid={`caretaker-save-debt-${index}`} className="ce-cta rust" style={{ width: "100%" }}>
+                      Record
+                    </button>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
             <Dialog open={payOpen} onOpenChange={setPayOpen}>
               <DialogTrigger asChild>
-                <Button data-testid={`caretaker-add-payment-${index}`} className="h-9 px-3 bg-[#1E5E3A] hover:bg-[#164a2d] text-white text-sm font-bold">Repay</Button>
+                <button data-testid={`caretaker-add-payment-${index}`} className="ce-cta leaf sm">Repay</button>
               </DialogTrigger>
-              <DialogContent className="bg-[#FAF5EF]">
-                <DialogHeader><DialogTitle className="font-heading text-xl text-[#3B1E10]">Repayment by {ct.name}</DialogTitle></DialogHeader>
-                <form onSubmit={addPay} className="space-y-3">
-                  <Field label="Amount (₦) *"><Input type="number" step="0.01" required value={pay.amount} data-testid={`caretaker-payment-amount-${index}`}
-                    onChange={(e) => setPay({ ...pay, amount: e.target.value })} className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                  <Field label="Note"><Input value={pay.note} data-testid={`caretaker-payment-note-${index}`}
-                    onChange={(e) => setPay({ ...pay, note: e.target.value })} className="bg-white border-2 border-[#8C6D58] h-12 text-lg" /></Field>
-                  <DialogFooter><Button type="submit" data-testid={`caretaker-save-payment-${index}`} className="w-full h-12 bg-[#1E5E3A] hover:bg-[#164a2d] text-white font-bold">Record</Button></DialogFooter>
+              <DialogContent className="ce-dialog">
+                <DialogHeader>
+                  <DialogTitle className="ce-dialog-title">Repayment by {ct.name}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={addPay}>
+                  <Field label="Amount (₦) *">
+                    <input type="number" step="0.01" required value={pay.amount} data-testid={`caretaker-payment-amount-${index}`}
+                      onChange={(e) => setPay({ ...pay, amount: e.target.value })} className="ce-input" />
+                  </Field>
+                  <Field label="Note">
+                    <input value={pay.note} data-testid={`caretaker-payment-note-${index}`}
+                      onChange={(e) => setPay({ ...pay, note: e.target.value })} className="ce-input" />
+                  </Field>
+                  <DialogFooter className="mt-4">
+                    <button type="submit" data-testid={`caretaker-save-payment-${index}`} className="ce-cta leaf" style={{ width: "100%" }}>
+                      Record
+                    </button>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
           </div>
         </div>
         {ct.money_history?.length > 0 && (
-          <div className="mt-2 space-y-1 max-h-28 overflow-y-auto" data-testid={`caretaker-money-history-${index}`}>
+          <div className="space-y-1" style={{ marginTop: 10, maxHeight: 120, overflowY: "auto" }}
+            data-testid={`caretaker-money-history-${index}`}>
             {ct.money_history.map((h, hi) => (
-              <div key={hi} className="flex items-center justify-between text-sm gap-2">
-                <span className="text-[#5C4638] truncate">{h.type === "debt" ? "Took" : "Repaid"}: {h.reason || h.note || "—"}</span>
-                <span className={`font-mono font-bold shrink-0 ${h.type === "debt" ? "text-[#9A3412]" : "text-[#1E5E3A]"}`}>{h.type === "debt" ? "+" : "−"}{naira(h.amount)}</span>
+              <div key={hi} className="flex items-center justify-between gap-2" style={{ fontSize: 13.5 }}>
+                <span className="ce-note truncate">
+                  {h.type === "debt" ? "Took" : "Repaid"}: {h.reason || h.note || "—"}
+                </span>
+                <span className={`ce-figure ${h.type === "debt" ? "rd" : "gr"}`} style={{ fontSize: 14 }}>
+                  {h.type === "debt" ? "+" : "−"}{naira(h.amount)}
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Short record notes */}
-      <div className="mt-3">
-        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#8C4A27] mb-2"><MessageSquare className="w-3.5 h-3.5" /> Short record</div>
+      {/* Short notes */}
+      <div style={{ marginTop: 12 }}>
+        <div className="ce-label" style={{ display: "flex", alignItems: "center", gap: 5, color: "#A8451C" }}>
+          <MessageSquare style={{ width: 14, height: 14 }} /> Short record
+        </div>
         {ct.records?.length ? (
-          <div className="space-y-1.5 mb-2 max-h-28 overflow-y-auto" data-testid={`caretaker-records-${index}`}>
+          <div className="space-y-1.5" style={{ margin: "8px 0", maxHeight: 120, overflowY: "auto" }}
+            data-testid={`caretaker-records-${index}`}>
             {ct.records.map((r, ri) => (
-              <div key={ri} className="bg-white rounded-lg px-3 py-1.5 border border-[#E3D5C5]">
-                <div className="text-sm text-[#24140E]">{r.note}</div>
-                <div className="text-xs text-[#5C4638]">{fmtDateTime(r.date)} · {r.by}</div>
+              <div key={ri} className="ce-mini" style={{ padding: "7px 10px" }}>
+                <div style={{ fontSize: 14.5, color: "#2B1A0F" }}>{r.note}</div>
+                <div className="ce-note" style={{ fontSize: 12 }}>{fmtDateTime(r.date)} · {r.by}</div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-sm text-[#5C4638] mb-2 italic">No notes yet.</div>
+          <div className="ce-note" style={{ margin: "8px 0", fontStyle: "italic" }}>No notes yet.</div>
         )}
         <div className="flex gap-2">
-          <Input value={note} data-testid={`caretaker-record-input-${index}`}
+          <input value={note} data-testid={`caretaker-record-input-${index}`}
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addNote())}
-            placeholder="Add a short note..." className="h-10 bg-white border border-[#8C6D58] text-sm" />
-          <Button type="button" onClick={addNote} data-testid={`add-caretaker-record-${index}`}
-            className="h-10 px-3 bg-[#8C4A27] hover:bg-[#3B1E10] text-white shrink-0"><Plus className="w-4 h-4" /></Button>
+            placeholder="Add a short note…" className="ce-input" style={{ marginTop: 0, height: 44, fontSize: 15 }} />
+          <button type="button" onClick={addNote} data-testid={`add-caretaker-record-${index}`}
+            aria-label="Add note" className="ce-cta sm" style={{ padding: "0 14px" }}>
+            <Plus />
+          </button>
         </div>
       </div>
     </div>
@@ -682,10 +754,8 @@ function CaretakerCard({ customerId, index, ct, isAdmin, onDone }) {
 function FertilizerStatusBadge({ status }) {
   if (!status || status === "no_charge") return null;
   const labels = { paid: "Paid", partial: "Part-paid", unpaid: "Unpaid" };
-  const colors = { paid: "bg-[#1E5E3A] text-white", partial: "bg-[#B45309] text-white", unpaid: "bg-[#9A3412] text-white" };
   return (
-    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${colors[status]}`}
-      data-testid={`fert-status-${status}`}>
+    <span className={`ce-tag ${status}`} data-testid={`fert-status-${status}`}>
       {labels[status]}
     </span>
   );
@@ -693,9 +763,9 @@ function FertilizerStatusBadge({ status }) {
 
 function Field({ label, children }) {
   return (
-    <div>
-      <Label className="text-base font-semibold text-[#24140E]">{label}</Label>
-      <div className="mt-1">{children}</div>
+    <div className="ce-field">
+      <label>{label}</label>
+      {children}
     </div>
   );
 }
@@ -703,11 +773,31 @@ function Field({ label, children }) {
 function InfoRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon className="w-5 h-5 text-[#8C4A27] mt-1 shrink-0" />
-      <div>
-        <div className="text-sm text-[#5C4638] uppercase tracking-wide">{label}</div>
-        <div className="text-lg text-[#24140E] font-medium break-words">{value}</div>
+      <span className="ce-id" style={{ minWidth: 40, padding: "8px 0", borderRadius: 12 }}>
+        <Icon style={{ width: 19, height: 19 }} />
+      </span>
+      <div className="min-w-0">
+        <div className="ce-label">{label}</div>
+        <div style={{ fontSize: 17, color: "#2B1A0F", fontWeight: 500, marginTop: 3, wordBreak: "break-word" }}>{value}</div>
       </div>
+    </div>
+  );
+}
+
+function Mini({ label, value, tone, testid }) {
+  return (
+    <div className="ce-mini" style={{ textAlign: "center" }}>
+      <div className="ce-label">{label}</div>
+      <div className={`ce-figure ${tone || ""}`} style={{ fontSize: 17, marginTop: 3 }} data-testid={testid}>{value}</div>
+    </div>
+  );
+}
+
+function Total({ label, value, tone, testid }) {
+  return (
+    <div>
+      <div className="ce-label">{label}</div>
+      <div className={`ce-figure ${tone || ""}`} style={{ fontSize: 19, marginTop: 3 }} data-testid={testid}>{value}</div>
     </div>
   );
 }

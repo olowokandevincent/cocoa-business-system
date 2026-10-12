@@ -6,11 +6,9 @@ import { toast } from "sonner";
 import { Pencil, Check, Loader2, Lock } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip as RTooltip, YAxis } from "recharts";
 import {
-  TrendBadge, GlassTileTall, GlassTileRow, GlassTileRate,
-} from "@/components/dashboard/GlassTile";
-
-const MARKET_HERO = "https://media.base44.com/images/public/6ac9ebc188dc43be05e8c9be/0b8b0e136_generated_b629c5f8.jpg";
-const STORE_BAG = "https://media.base44.com/images/public/6ac9ebc188dc43be05e8c9be/a1ccc29de_generated_eeff9bfd.jpg";
+  TrendBadge, LedgerTileTall, LedgerTileRow, LedgerTileRate,
+} from "@/components/dashboard/LedgerTile";
+import { PODS_DRYING, STORE_SACKS } from "@/styles/imagery";
 
 export default function Dashboard() {
   const { user, setUser } = useAuth();
@@ -52,10 +50,8 @@ export default function Dashboard() {
 
   if (!stats)
     return (
-      <div className="gh-page">
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-10 h-10 animate-spin text-[#D97706]" />
-        </div>
+      <div className="ce-spin">
+        <Loader2 className="w-10 h-10 animate-spin" />
       </div>
     );
 
@@ -75,23 +71,23 @@ export default function Dashboard() {
   const chartReady = isAdmin && live?.available && series.length > 1;
 
   return (
-    <div className="gh-page">
+    <div className="ce-page ce-stack">
       {/* Dateline sheet */}
-      <div className="gh-glass gh-date">
+      <div className="ce-card ce-date ce-rise ce-d1">
         <div>
-          <div className="gh-eb">The cocoa ledger · daily record</div>
-          <div className="gh-dt gh-mono" data-testid="dashboard-dateline">{today}</div>
+          <div className="ce-eyebrow dark">The cocoa ledger · daily record</div>
+          <div className="ce-date-v" data-testid="dashboard-dateline">{today}</div>
         </div>
-        <div className="gh-pill">{isAdmin ? "Owner" : "Staff"}</div>
+        <span className="ce-chip gold">{isAdmin ? "Owner" : "Staff"}</span>
       </div>
 
       {/* Greeting */}
-      <div className="gh-greet">
+      <div className="ce-greet ce-rise ce-d2">
         <h1>
           Good day, {user?.name || "there"}.
           <button
             type="button"
-            className="gh-pen"
+            className="ce-pen"
             onClick={() => { setNameVal(user?.name || ""); setEditName(true); }}
             data-testid="edit-owner-name"
             aria-label="Edit your name"
@@ -100,46 +96,46 @@ export default function Dashboard() {
           </button>
         </h1>
         <p>Here is what your store looks like today.</p>
+
+        {editName && (
+          <div className="ce-edit" style={{ marginTop: 16 }}>
+            <input
+              autoFocus
+              value={nameVal}
+              data-testid="owner-name-input"
+              aria-label="Your name"
+              placeholder="Your name"
+              onChange={(e) => setNameVal(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+            />
+            <button type="button" onClick={saveName} data-testid="save-owner-name" aria-label="Save">
+              <Check />
+            </button>
+          </div>
+        )}
       </div>
 
-      {editName && (
-        <div className="gh-edit">
-          <input
-            autoFocus
-            value={nameVal}
-            data-testid="owner-name-input"
-            aria-label="Your name"
-            placeholder="Your name"
-            onChange={(e) => setNameVal(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && saveName()}
-          />
-          <button type="button" onClick={saveName} data-testid="save-owner-name" aria-label="Save">
-            <Check />
-          </button>
-        </div>
-      )}
+      {/* Market band over the drying pods */}
+      <div className="ce-band ce-rise ce-d3">
+        <img src={PODS_DRYING} alt="Split cocoa pods drying on a mat" />
+        <div className="ce-band-scrim" aria-hidden="true" />
 
-      {/* Market band over the harvest photograph */}
-      <div className="gh-mk">
-        <img src={MARKET_HERO} alt="Split cocoa pods drying on a mat" />
-        <div className="gh-sc" />
-
-        <div className="gh-glass gh-mkg">
+        <div className="ce-readout">
           {isAdmin ? (
             <>
-              <div className="gh-lv">
-                <span className="gh-dot" />
-                <span className="gh-eb">Live global cocoa market</span>
+              <div className="ce-live">
+                <span className="ce-dot" />
+                <span className="ce-eyebrow">Live global cocoa market</span>
               </div>
-              <div className="gh-big">
-                <span className="gh-mono" data-testid="dashboard-market-price">{marketFigure}</span>
+              <div className="ce-big">
+                <span data-testid="dashboard-market-price">{marketFigure}</span>
                 <small>/kg</small>
                 {live?.available && (
                   <TrendBadge trend={live.direction} changePct={live.change_pct}
                     testid="dashboard-live-trend" />
                 )}
               </div>
-              <div className="gh-cap">
+              <div className="ce-caption">
                 {live == null
                   ? "Fetching the world market…"
                   : live.available
@@ -149,89 +145,87 @@ export default function Dashboard() {
             </>
           ) : (
             <>
-              <div className="gh-lv">
-                <span className="gh-dot" />
-                <span className="gh-eb" style={{ color: "#7a5a45" }}>Cocoa buying rate</span>
+              <div className="ce-live">
+                <span className="ce-dot" />
+                <span className="ce-eyebrow">Cocoa buying rate</span>
               </div>
-              <div className="gh-big" style={{ marginTop: 6 }}>
-                <Lock className="gh-lock" />
-                <span style={{ fontSize: 36 }}>Confidential</span>
+              <div className="ce-big">
+                <Lock className="ce-lock" />
+                <span style={{ fontSize: 34 }}>Confidential</span>
               </div>
-              <div className="gh-cap" style={{ marginTop: 8 }}>
+              <div className="ce-caption">
                 Your buying rate stays private — open the Cocoa Rate page to view or set it.
               </div>
             </>
           )}
         </div>
 
-        <div className="gh-glass gh-chart" data-testid="dashboard-market-chart">
+        <div className="ce-chart" data-testid="dashboard-market-chart">
           {chartReady ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
                 <defs>
-                  <linearGradient id="ghMarketFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#D97706" stopOpacity={0.35} />
-                    <stop offset="1" stopColor="#D97706" stopOpacity={0} />
+                  <linearGradient id="ceMarketFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#F0B457" stopOpacity={0.45} />
+                    <stop offset="1" stopColor="#F0B457" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <YAxis hide domain={["auto", "auto"]} />
                 <RTooltip
                   formatter={(v) => [naira(v) + "/kg", "Market"]}
-                  contentStyle={{ borderRadius: 14, border: "1px solid rgba(255,255,255,.55)", background: "rgba(251,246,236,.92)", color: "#3B1E10" }}
-                  labelStyle={{ color: "#7a5a45" }}
+                  contentStyle={{ borderRadius: 14, border: "1px solid rgba(240,180,87,.5)", background: "rgba(24,13,6,.92)", color: "#FFF3E0" }}
+                  labelStyle={{ color: "#F0B457" }}
                 />
-                <Area type="monotone" dataKey="value" stroke="#D97706" strokeWidth={3.5}
-                  strokeLinecap="round" fill="url(#ghMarketFill)" dot={false}
-                  activeDot={{ r: 6, fill: "#D97706", stroke: "#fff", strokeWidth: 2 }}
+                <Area type="monotone" dataKey="value" stroke="#F0B457" strokeWidth={3.5}
+                  strokeLinecap="round" fill="url(#ceMarketFill)" dot={false}
+                  activeDot={{ r: 6, fill: "#F0B457", stroke: "#2A1810", strokeWidth: 2 }}
                   animationDuration={1600} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <span className="gh-chart-mark gh-mono">₦</span>
+            <span className="ce-chart-mark">₦</span>
           )}
         </div>
       </div>
 
       {/* Ledger tiles */}
-      <div className="gh-tiles">
-        <div className="gh-col">
-          <GlassTileTall
+      <div className="ce-tiles">
+        <div className="ce-col">
+          <LedgerTileTall
             index={1} label="Registered customers" value={stats.total_customers}
             sub="Account holders in your book" testid="dashboard-stat-total-customers"
-            delay="gh-d1" onClick={() => navigate("/customers")} />
-          <GlassTileTall
+            delay="ce-d1" onClick={() => navigate("/customers")} />
+          <LedgerTileTall
             index={2} label="Total money owed" value={naira(stats.total_owed)}
             sub="Across all customers" testid="dashboard-stat-total-money-owed"
-            delay="gh-d2" valueTone="am" />
-          <GlassTileTall
+            delay="ce-d2" valueTone="am" />
+          <LedgerTileTall
             index={3} label="Cocoa in store" value={`${stats.cocoa_in_store_kg.toLocaleString()} kg`}
             sub={`≈ ${stats.cocoa_in_store_bags} bags of 64 kg`} testid="dashboard-stat-cocoa-in-store"
-            delay="gh-d3" valueTone="gr" bagImage={STORE_BAG}
+            delay="ce-d3" valueTone="gr" bagImage={STORE_SACKS}
             onClick={() => navigate("/cocoa-records")} />
         </div>
 
-        <div className="gh-col">
-          <GlassTileRow
+        <div className="ce-col">
+          <LedgerTileRow
             index={4} label="Unscaled cocoa" value={stats.unscaled_count}
             sub={stats.unscaled_count > 0 ? "Needs weight entry" : "All deliveries weighed"}
-            testid="dashboard-stat-unscaled-count" delay="gh-d4"
+            testid="dashboard-stat-unscaled-count" delay="ce-d4"
             labelTone={stats.unscaled_count > 0 ? "u" : undefined}
             valueColor={stats.unscaled_count > 0 ? "#991B1B" : undefined}
             onClick={() => navigate("/cocoa-records")} />
-          <GlassTileRow
+          <LedgerTileRow
             index={5} label="Today's records" value={stats.todays_records}
             sub="Deliveries & updates today" testid="dashboard-stat-todays-records"
-            delay="gh-d5" onClick={() => navigate("/cocoa-records")} />
-          <GlassTileRate
-            index={6} testid="dashboard-stat-cocoa-rate-clickable" delay="gh-d6"
+            delay="ce-d5" onClick={() => navigate("/cocoa-records")} />
+          <LedgerTileRate
+            index={6} testid="dashboard-stat-cocoa-rate-clickable" delay="ce-d6"
             badge={<TrendBadge trend={stats.rate_trend} changePct={stats.rate_change_pct}
               testid="dashboard-rate-trend" />}
             onClick={() => navigate("/cocoa-rate")} />
-          <span className="gh-sr" data-testid="dashboard-rate-confidential">Cocoa rate is confidential</span>
+          <span className="ce-sr" data-testid="dashboard-rate-confidential">Cocoa rate is confidential</span>
         </div>
       </div>
-
-      <div className="gh-foot" />
     </div>
   );
 }
