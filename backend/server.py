@@ -1022,3 +1022,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------- Compiled frontend (deployments only) ----------------
+# The Dockerfile builds the React app and points FRONTEND_BUILD_DIR at it, so this one process
+# serves the UI and the API from a single origin — which is what the httpOnly session cookie
+# needs. Unset, as in the Base44 sandbox (where the CRA dev server serves the frontend), nothing
+# below runs and the app behaves exactly as before.
+FRONTEND_BUILD_DIR = os.environ.get("FRONTEND_BUILD_DIR", "").strip()
+if FRONTEND_BUILD_DIR:
+    build_dir = Path(FRONTEND_BUILD_DIR).resolve()
+    if (build_dir / "index.html").is_file():
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
+
+        if (build_dir / "static").is_dir():
+            app.mount("/static", StaticFiles(directory=build_dir / "static"), name="static")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        async def spa(path: str):
+            """Serve a built file by path; index.html for client-side routes and for /."""
+            if path == "api" or path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Not found")
+            candidate = (build_dir / path).resolve()
+            if path and candidate.is_file() and build_dir in candidate.parents:
+                return FileResponse(candidate)
+            return FileResponse(build_dir / "index.html")

@@ -105,6 +105,15 @@ Every page shares one theme, defined in **`frontend/src/styles/cocoa-estate.css`
   access to anyone with the sign-in page — switch it off by clearing `DEMO_EMAIL`/`DEMO_PASSWORD`
   (or set them to something private) before showing the app to the public.
 
+## Deploying (Render + Atlas)
+
+`Dockerfile` + `render.yaml`, with the click-by-click steps in **`DEPLOY.md`**. One Render web
+service serves everything: the React bundle is compiled inside the image and `backend/server.py`
+serves it from `FRONTEND_BUILD_DIR`, so UI and API share an origin. That serving block is inert
+here (the variable is unset in the sandbox) — the dev servers above are what the preview runs.
+`docker build -t cocoa . && docker run -e MONGO_URL=... -e DB_NAME=... -e JWT_SECRET=... -p 8080:8000 cocoa`
+is a valid local check of the deployed shape.
+
 ## Verifying a change
 
 - Frontend: edits hot-reload; the dev server logs `Compiled successfully` / compile errors.
