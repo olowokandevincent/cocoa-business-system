@@ -34,6 +34,10 @@ api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# httpx logs every request URL at INFO, and the Alpha Vantage key travels as a query parameter,
+# so that would write the key into the app logs on every market refresh.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 # ---------------- Helpers ----------------
 def now_utc():

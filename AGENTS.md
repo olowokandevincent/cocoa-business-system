@@ -55,6 +55,8 @@ owner `olowokandevincent0@gmail.com` / `Cocoa@2026`, demo `demo@cocoaledger.app`
   from the global market feed and the key only provides the realtime FX rate. It is **optional at
   boot**: unset, or the call failing, silently falls back to Yahoo `NGN=X`, so the naira chart
   appears either way. The free tier allows 25 calls/day, which the 6-hour cache keeps us inside.
+  The key travels as a query parameter, so `server.py` silences httpx's INFO request logging —
+  otherwise every refresh would write the key into the app logs.
 - **`GET /api/cocoa-rate/live` is open to every signed-in user** (owner *and* staff) and, besides the
   USD figures, returns `usdngn`, `ngn_per_kg`, `trend_ngn` and `fx_source` (`"alpha_vantage"` or
   `"yahoo"`) — the same public global market converted to naira. The FX call is best-effort: if both
