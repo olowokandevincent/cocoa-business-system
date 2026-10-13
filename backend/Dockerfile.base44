@@ -1,0 +1,25 @@
+# Base44 sandbox image: dependency layer only.
+# The application source is bind-mounted at /app by docker-compose.base44.yml
+# and served with `uvicorn --reload`, so edits are picked up without a rebuild.
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt /tmp/requirements.txt
+# `emergentintegrations` is only published on the platform's private index and is not
+# imported anywhere in this repo (nothing in backend/ references it), so it is skipped
+# here; every other pin is installed exactly as committed.
+RUN grep -vi '^emergentintegrations' /tmp/requirements.txt > /tmp/requirements-sandbox.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-sandbox.txt
+
+EXPOSE 8001
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]

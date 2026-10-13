@@ -1,0 +1,18 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "JWT_SECRET",
+      "description": "Signs the app's JWT session cookies. Required at boot (backend/server.py reads os.environ['JWT_SECRET']).",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "ALPHA_VANTAGE_KEY",
+      "description": "Optional but recommended. Alpha Vantage API key (free tier: https://www.alphavantage.co/support/#api-key). It supplies the realtime USD/NGN rate that converts the live world cocoa price into naira on the dashboard and the Cocoa Rate page. Alpha Vantage has no cocoa feed, so the price itself still comes from the global market; without this key the conversion falls back to Yahoo's NGN=X quote and the naira chart still appears.",
+      "requiredAtBoot": false
+    }
+  ]
+}

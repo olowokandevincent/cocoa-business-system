@@ -24,11 +24,19 @@ db = client[os.environ['DB_NAME']]
 
 JWT_ALGORITHM = "HS256"
 
+# Alpha Vantage supplies the realtime USD/NGN rate that turns the world market price into naira.
+# Optional: with no key configured the endpoint falls back to Yahoo's NGN=X quote.
+ALPHA_VANTAGE_KEY = os.environ.get("ALPHA_VANTAGE_KEY", "").strip()
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# httpx logs every request URL at INFO, and the Alpha Vantage key travels as a query parameter,
+# so that would write the key into the app logs on every market refresh.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # ---------------- Helpers ----------------
@@ -220,7 +228,39 @@ class FertilizerRepayInput(BaseModel):
     note: Optional[str] = ""
 
 
+class FertilizerPaymentInput(BaseModel):
+    amount: float
+    note: Optional[str] = ""
+
+
 # ---------------- Auth Endpoints ----------------
+def demo_credentials():
+    """The ready-made demo login, when the operator has set one up.
+
+    Off by default: the demo account (and the sign-in page's demo button) only
+    exists when both DEMO_EMAIL and DEMO_PASSWORD are set in the environment.
+    """
+    email = os.environ.get("DEMO_EMAIL", "").strip().lower()
+    password = os.environ.get("DEMO_PASSWORD", "").strip()
+    if email and password:
+        return email, password
+    return None, None
+
+
+@api_router.get("/auth/demo")
+async def demo_account_info():
+    """Public: lets the sign-in page offer the demo account without hardcoding
+    its credentials in the frontend bundle."""
+    email, password = demo_credentials()
+    if not email:
+        return {"available": False}
+    existing = await db.users.find_one({"email": email})
+    if not existing or not existing.get("active", True):
+        return {"available": False}
+    return {"available": True, "email": email, "password": password,
+            "name": existing.get("name", "Demo")}
+
+
 @api_router.post("/auth/login")
 async def login(body: LoginInput, request: Request, response: Response):
     email = body.email.strip().lower()
@@ -419,6 +459,28 @@ def customer_summary(c: dict) -> dict:
     }
 
 
+def fertilizer_view(f: dict) -> dict:
+    """Add the money picture for one fertilizer record: what it is worth, what has
+    been paid, what is still owed, and the matching status label."""
+    f = dict(f)
+    value = round(f.get("value") or 0, 2)
+    paid = round(f.get("paid") or 0, 2)
+    balance = round(max(value - paid, 0), 2)
+    if value <= 0:
+        payment_status = "no_charge"
+    elif paid <= 0:
+        payment_status = "unpaid"
+    elif paid >= value:
+        payment_status = "paid"
+    else:
+        payment_status = "partial"
+    f["value"] = value
+    f["paid"] = paid
+    f["balance"] = balance
+    f["payment_status"] = payment_status
+    return f
+
+
 @api_router.get("/customers")
 async def list_customers(search: str = "", user: dict = Depends(get_current_user)):
     customers = await db.customers.find({}, {"_id": 0}).sort("customer_id", 1).to_list(5000)
@@ -469,6 +531,7 @@ async def get_customer(customer_pk: str, user: dict = Depends(get_current_user))
                         "date": r["date"], "by": r.get("received_by", "")})
     history.sort(key=lambda x: x["date"], reverse=True)
     c["history"] = history
+    c["fertilizer"] = [fertilizer_view(f) for f in c.get("fertilizer", [])]
     for ct in c.get("caretakers", []):
         ct["balance"] = caretaker_balance(ct)
         ct["money_history"] = caretaker_money_history(ct)
@@ -607,10 +670,11 @@ async def add_fertilizer(customer_pk: str, body: FertilizerInput, user: dict = D
     if not c:
         raise HTTPException(status_code=404, detail="Customer not found")
     entry = {"id": str(uuid.uuid4()), "quantity": body.quantity, "unit": body.unit or "bags",
-             "note": body.note or "", "value": round(body.value or 0, 2), "returned": 0,
+             "note": body.note or "", "value": round(body.value or 0, 2), "paid": 0,
+             "payments": [], "returned": 0,
              "status": "outstanding", "date": iso_now(), "by": user["name"]}
     await db.customers.update_one({"id": customer_pk}, {"$push": {"fertilizer": entry}})
-    return entry
+    return fertilizer_view(entry)
 
 
 @api_router.patch("/customers/{customer_pk}/fertilizer/{fid}/return")
@@ -628,7 +692,27 @@ async def return_fertilizer(customer_pk: str, fid: str, body: FertilizerRepayInp
     found["last_return_note"] = body.note or ""
     found["settled_at"] = iso_now()
     await db.customers.update_one({"id": customer_pk}, {"$set": {"fertilizer": fert}})
-    return found
+    return fertilizer_view(found)
+
+
+@api_router.post("/customers/{customer_pk}/fertilizer/{fid}/payments")
+async def pay_fertilizer(customer_pk: str, fid: str, body: FertilizerPaymentInput, user: dict = Depends(get_current_user)):
+    c = await db.customers.find_one({"id": customer_pk})
+    if not c:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    fert = c.get("fertilizer", [])
+    found = next((f for f in fert if f.get("id") == fid), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="Fertilizer record not found")
+    amount = round(body.amount or 0, 2)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be more than zero")
+    payment = {"id": str(uuid.uuid4()), "amount": amount, "note": body.note or "",
+               "date": iso_now(), "by": user["name"]}
+    found.setdefault("payments", []).append(payment)
+    found["paid"] = round((found.get("paid") or 0) + amount, 2)
+    await db.customers.update_one({"id": customer_pk}, {"$set": {"fertilizer": fert}})
+    return fertilizer_view(found)
 
 
 # ---------------- Cocoa Store Records ----------------
@@ -728,6 +812,25 @@ async def delete_cocoa_record(record_id: str, user: dict = Depends(require_admin
     return {"message": "Record deleted"}
 
 
+async def alpha_vantage_usdngn() -> Optional[float]:
+    """Realtime USD -> NGN rate from Alpha Vantage. None when no key is configured."""
+    if not ALPHA_VANTAGE_KEY:
+        return None
+    async with httpx.AsyncClient(timeout=15) as hc:
+        resp = await hc.get("https://www.alphavantage.co/query", params={
+            "function": "CURRENCY_EXCHANGE_RATE",
+            "from_currency": "USD",
+            "to_currency": "NGN",
+            "apikey": ALPHA_VANTAGE_KEY,
+        })
+    body = resp.json()
+    rate = (body.get("Realtime Currency Exchange Rate") or {}).get("5. Exchange Rate")
+    if not rate:
+        raise ValueError(body.get("Information") or body.get("Note") or body.get("Error Message")
+                         or "Alpha Vantage returned no USD/NGN rate")
+    return float(rate)
+
+
 # ---------------- Cocoa Rate ----------------
 @api_router.get("/cocoa-rate")
 async def get_rate(user: dict = Depends(get_current_user)):
@@ -751,7 +854,10 @@ async def set_rate(body: RateInput, user: dict = Depends(require_admin)):
 
 
 @api_router.get("/cocoa-rate/live")
-async def get_live_rate(user: dict = Depends(require_admin)):
+async def get_live_rate(user: dict = Depends(get_current_user)):
+    # The world market is public data, so every signed-in user gets it; only the
+    # private buying rate (POST /cocoa-rate) stays owner-only.
+    # The 6-hour cache also keeps us inside the Alpha Vantage free tier (25 calls/day).
     cache = await db.settings.find_one({"_id": "cocoa_live"})
     if cache and cache.get("fetched_at"):
         fetched = datetime.fromisoformat(cache["fetched_at"])
@@ -790,6 +896,31 @@ async def get_live_rate(user: dict = Depends(require_admin)):
                   "date": (trend[-1]["date"] if trend else datetime.now(timezone.utc).strftime("%Y-%m")),
                   "name": "ICE Cocoa Futures (CC=F)", "unit": "USD per metric ton",
                   "trend": trend, "change_pct": change_pct, "direction": direction}
+        # Naira view of the same market price (public global market, not our buying rate).
+        # Alpha Vantage provides the realtime USD/NGN rate; Yahoo NGN=X is the fallback when the
+        # key is unset or the call fails, so the naira figures still appear either way.
+        usdngn, fx_source = None, None
+        try:
+            usdngn = await alpha_vantage_usdngn()
+            if usdngn:
+                fx_source = "alpha_vantage"
+        except Exception as e:
+            logger.warning(f"Alpha Vantage USD/NGN fetch failed: {e}")
+        if not usdngn:
+            try:
+                async with httpx.AsyncClient(timeout=10, headers=headers) as hc:
+                    fx = await hc.get("https://query1.finance.yahoo.com/v8/finance/chart/NGN=X",
+                                      params={"range": "5d", "interval": "1d"})
+                usdngn = fx.json()["chart"]["result"][0]["meta"].get("regularMarketPrice")
+                if usdngn:
+                    fx_source = "yahoo"
+            except Exception as e:
+                logger.warning(f"USD/NGN rate fallback fetch failed: {e}")
+        if usdngn:
+            result["usdngn"] = round(usdngn, 2)
+            result["ngn_per_kg"] = round(result["usd_per_kg"] * usdngn, 0)
+            result["trend_ngn"] = [{"date": p["date"], "value": round(p["value"] * usdngn, 0)} for p in trend]
+            result["fx_source"] = fx_source
         await db.settings.update_one({"_id": "cocoa_live"},
                                      {"$set": {"data": result, "fetched_at": iso_now()}}, upsert=True)
         return {**result, "source": "live"}
@@ -864,6 +995,19 @@ async def startup():
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
 
+    demo_email, demo_password = demo_credentials()
+    if demo_email:
+        demo = await db.users.find_one({"email": demo_email})
+        if demo is None:
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()), "email": demo_email, "name": "Demo Account",
+                "password_hash": hash_password(demo_password), "role": "admin",
+                "active": True, "created_at": iso_now(), "demo": True,
+            })
+            logger.info("Seeded demo account")
+        elif not verify_password(demo_password, demo["password_hash"]):
+            await db.users.update_one({"email": demo_email}, {"$set": {"password_hash": hash_password(demo_password)}})
+
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -878,3 +1022,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------- Compiled frontend (deployments only) ----------------
+# The Dockerfile builds the React app and points FRONTEND_BUILD_DIR at it, so this one process
+# serves the UI and the API from a single origin — which is what the httpOnly session cookie
+# needs. Unset, as in the Base44 sandbox (where the CRA dev server serves the frontend), nothing
+# below runs and the app behaves exactly as before.
+FRONTEND_BUILD_DIR = os.environ.get("FRONTEND_BUILD_DIR", "").strip()
+if FRONTEND_BUILD_DIR:
+    build_dir = Path(FRONTEND_BUILD_DIR).resolve()
+    if (build_dir / "index.html").is_file():
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
+
+        if (build_dir / "static").is_dir():
+            app.mount("/static", StaticFiles(directory=build_dir / "static"), name="static")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        async def spa(path: str):
+            """Serve a built file by path; index.html for client-side routes and for /."""
+            if path == "api" or path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Not found")
+            candidate = (build_dir / path).resolve()
+            if path and candidate.is_file() and build_dir in candidate.parents:
+                return FileResponse(candidate)
+            return FileResponse(build_dir / "index.html")

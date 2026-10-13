@@ -212,10 +212,12 @@ class TestCocoaRate:
         # Yahoo CC=F: either live/cache with price OR graceful available:False
         assert "available" in data or "source" in data
 
-    def test_live_rate_staff_forbidden(self, staff_session):
-        # Iter 5: live rate is admin-only
+    def test_live_rate_open_to_staff(self, staff_session):
+        # The world market figure is public to every signed-in user. Only the private
+        # buying rate stays owner-only (see test_staff_cannot_set_rate).
         r = staff_session.get(f"{BASE_URL}/api/cocoa-rate/live")
-        assert r.status_code == 403
+        assert r.status_code == 200
+        assert "available" in r.json() or "source" in r.json()
 
 
 # ---------- Staff Management ----------

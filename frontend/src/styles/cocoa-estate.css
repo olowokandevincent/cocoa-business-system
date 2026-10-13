@@ -1,0 +1,627 @@
+/* ==========================================================================
+   Cocoa Estate — the app-wide visual language for Cocoa Ledger.
+
+   Loaded from src/index.js AFTER src/index.css, so these rules come after
+   Tailwind's utilities in the emitted stylesheet and win on equal specificity.
+
+   Two house rules inherited from the theme this replaces:
+   1. Never set `display` on a class the markup also passes responsive
+      utilities to (`.ce-btn`, `.ce-nav`), or `hidden` / `lg:flex` stop working.
+   2. Keep the layout rules here, the responsive behaviour in utilities.
+
+   Depth comes from three layers: a dark cocoa-bark canvas (photos + bean
+   texture), cream "ledger sheet" cards with a gold hairline, and burnished
+   amber controls that lift on hover.
+   ========================================================================== */
+
+:root {
+    --ce-bark: #1B0F07;
+    --ce-bark-2: #2A1810;
+    --ce-bark-3: #3A2317;
+    --ce-rust: #8A3A15;
+    --ce-clay: #A8451C;
+    --ce-amber: #D98324;
+    --ce-gold: #F0B457;
+    --ce-gold-soft: #F6D08A;
+    --ce-leaf: #2E7D4F;
+    --ce-leaf-deep: #1B4A2C;
+    --ce-cream: #FFF9F0;
+    --ce-parch: #F6E9D6;
+    --ce-parch-2: #EDDCC3;
+    --ce-ink: #2B1A0F;
+    --ce-ink-soft: #6E553F;
+    --ce-line: rgba(107, 42, 20, .17);
+    --ce-serif: "Playfair Display", Georgia, serif;
+    --ce-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+    --ce-mono: "JetBrains Mono", monospace;
+    --ce-lift: 0 18px 40px rgba(15, 8, 3, .34), inset 0 1px 0 #fff;
+}
+
+/* ---- the canvas: dark bark, warm light, faint bean texture ---- */
+body {
+    font-family: var(--ce-sans);
+    color: var(--ce-ink);
+    background-color: var(--ce-bark);
+    background-image:
+        radial-gradient(1100px 560px at 8% -12%, rgba(168, 69, 28, .5), transparent 62%),
+        radial-gradient(900px 520px at 100% -6%, rgba(240, 180, 87, .2), transparent 58%),
+        radial-gradient(1000px 700px at 50% 118%, rgba(46, 125, 79, .24), transparent 62%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='68' height='68' viewBox='0 0 68 68'%3E%3Cg fill='none' stroke='%23F0B457' stroke-opacity='.07' stroke-width='1.3'%3E%3Cellipse cx='17' cy='17' rx='11' ry='7.5' transform='rotate(-28 17 17)'/%3E%3Cellipse cx='51' cy='51' rx='11' ry='7.5' transform='rotate(-28 51 51)'/%3E%3C/g%3E%3C/svg%3E");
+    background-attachment: fixed;
+}
+.ce-shell { position: relative; min-height: 100vh; }
+/* the estate photograph, shared by every page, sunk under a heavy scrim */
+.ce-wall { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
+.ce-wall img {
+    width: 100%; height: 100%; object-fit: cover;
+    animation: ceKen 42s ease-in-out infinite alternate;
+}
+.ce-wall::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(27, 15, 7, .84) 0%, rgba(27, 15, 7, .9) 45%, rgba(16, 9, 4, .95) 100%);
+}
+
+/* ---- the bar across the top ---- */
+.ce-hdr-wrap { position: sticky; top: 0; z-index: 40; padding: 14px 16px 0; }
+.ce-hdr {
+    position: relative;
+    max-width: 1180px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 12px 18px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(46, 26, 16, .93), rgba(24, 13, 6, .95));
+    border: 1px solid rgba(240, 180, 87, .3);
+    box-shadow: 0 20px 44px rgba(8, 4, 1, .6), inset 0 1px 0 rgba(255, 255, 255, .16);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: var(--ce-cream);
+    animation: ceDrop .55s cubic-bezier(.2, .8, .2, 1) both;
+}
+.ce-hdr::after {
+    content: "";
+    position: absolute; left: 22px; right: 22px; bottom: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(240, 180, 87, .75), transparent);
+}
+.ce-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+.ce-logo {
+    position: relative; flex: none;
+    width: 48px; height: 48px; border-radius: 50%;
+    overflow: hidden; background: var(--ce-bark-3);
+    border: 2px solid rgba(240, 180, 87, .85);
+    box-shadow: 0 0 0 3px rgba(24, 13, 6, .95), 0 10px 22px rgba(0, 0, 0, .55);
+    transition: box-shadow .25s, transform .25s;
+}
+.ce-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); }
+.ce-logo::after {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    box-shadow: inset 0 0 20px rgba(20, 10, 4, .6), inset 0 1px 6px rgba(255, 255, 255, .28);
+}
+.ce-brand:hover .ce-logo { transform: rotate(-4deg) scale(1.04); box-shadow: 0 0 0 3px rgba(24, 13, 6, .95), 0 12px 26px rgba(240, 180, 87, .45); }
+.ce-word { display: flex; flex-direction: column; line-height: 1.05; }
+.ce-word b { font-family: var(--ce-serif); font-size: 20px; font-weight: 700; }
+.ce-word span { margin-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ce-gold); }
+
+/* display is left to the caller's utilities */
+.ce-nav { gap: 4px; }
+.ce-nav a {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 13.5px; font-weight: 600; color: #E9D7BF;
+    text-decoration: none; cursor: pointer;
+    transition: background .2s, color .2s, box-shadow .2s;
+}
+.ce-nav a svg { width: 17px; height: 17px; }
+.ce-nav a:hover { background: rgba(240, 180, 87, .15); color: #fff; }
+.ce-nav a.on {
+    background: linear-gradient(180deg, #C2632A, #8F3D17);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+.ce-user { text-align: right; line-height: 1.2; }
+.ce-user b { display: block; font-size: 14.5px; font-weight: 700; }
+.ce-user span { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ce-gold); font-weight: 700; }
+.ce-btn {
+    align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 12px;
+    border: 1px solid rgba(240, 180, 87, .32);
+    background: rgba(240, 180, 87, .13);
+    color: var(--ce-cream); font: inherit; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; transition: background .2s, box-shadow .2s, transform .15s;
+}
+.ce-btn:hover { background: rgba(240, 180, 87, .28); box-shadow: 0 10px 22px rgba(0, 0, 0, .35); }
+.ce-btn:active { transform: translateY(1px); }
+.ce-btn svg { width: 17px; height: 17px; }
+
+.ce-menu {
+    max-width: 1180px; margin: 10px auto 0; padding: 14px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(46, 26, 16, .96), rgba(24, 13, 6, .97));
+    border: 1px solid rgba(240, 180, 87, .28);
+    box-shadow: 0 24px 50px rgba(8, 4, 1, .6);
+    animation: ceDrop .35s ease both;
+}
+.ce-menu a, .ce-menu button {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 13px 14px; border-radius: 12px; border: none; background: transparent;
+    color: #F3E4CE; font-family: inherit; font-size: 16px; font-weight: 600;
+    text-decoration: none; cursor: pointer; transition: background .2s;
+}
+.ce-menu a:hover, .ce-menu button:hover { background: rgba(240, 180, 87, .16); }
+.ce-menu a.on { background: linear-gradient(180deg, #C2632A, #8F3D17); color: #fff; }
+.ce-menu svg { width: 19px; height: 19px; }
+
+/* ---- page frame ---- */
+.ce-main { position: relative; z-index: 2; max-width: 1180px; margin: 0 auto; padding: 26px 16px 64px; }
+.ce-page { position: relative; z-index: 2; animation: ceRise .6s cubic-bezier(.2, .8, .2, 1) both; }
+.ce-stack { display: grid; gap: 22px; }
+.ce-hairline { height: 1px; border: 0; background: linear-gradient(90deg, transparent, rgba(240, 180, 87, .55), transparent); }
+
+/* ---- page banner: photographic strip with the title over it ---- */
+.ce-banner {
+    position: relative; overflow: hidden;
+    display: flex; align-items: flex-end;
+    min-height: 210px; border-radius: 26px;
+    border: 1px solid rgba(240, 180, 87, .3);
+    box-shadow: 0 28px 60px rgba(10, 5, 2, .55);
+}
+.ce-banner > img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; animation: ceKen 34s ease-in-out infinite alternate;
+}
+.ce-banner-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(24, 13, 6, .5) 0%, rgba(24, 13, 6, .74) 52%, rgba(16, 9, 4, .95) 100%);
+}
+.ce-banner-in {
+    position: relative; z-index: 2; width: 100%;
+    padding: 26px 30px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.ce-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ce-gold); }
+.ce-eyebrow.dark { color: var(--ce-rust); }
+.ce-title {
+    margin-top: 8px;
+    font-family: var(--ce-serif); font-weight: 700; letter-spacing: -.01em;
+    font-size: clamp(30px, 4.4vw, 46px); line-height: 1.04; color: #FFF6E6;
+    text-shadow: 0 6px 26px rgba(0, 0, 0, .6);
+}
+.ce-title.dark { color: var(--ce-ink); text-shadow: none; }
+.ce-subtitle { margin-top: 8px; font-size: 16.5px; color: #EDDCC3; max-width: 64ch; }
+.ce-subtitle.dark { color: var(--ce-ink-soft); }
+.ce-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* ---- cream ledger sheets ---- */
+.ce-card {
+    position: relative;
+    padding: 22px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #FFFCF6, #F7EDDD);
+    border: 1px solid var(--ce-line);
+    box-shadow: var(--ce-lift);
+    color: var(--ce-ink);
+}
+.ce-card::before {
+    content: ""; position: absolute; left: 22px; right: 22px; top: 0; height: 3px;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(90deg, var(--ce-gold), rgba(217, 131, 36, .12));
+    pointer-events: none;
+}
+.ce-card-dark {
+    background: linear-gradient(180deg, #33200F, #20130A);
+    border-color: rgba(240, 180, 87, .32);
+    color: #F8E9D4;
+}
+.ce-card-dark::before { background: linear-gradient(90deg, var(--ce-gold), transparent); }
+.ce-card-leaf { background: linear-gradient(180deg, #F4FBF5, #E7F2EA); border-color: rgba(46, 125, 79, .28); }
+.ce-card-leaf::before { background: linear-gradient(90deg, var(--ce-leaf), rgba(46, 125, 79, .12)); }
+.ce-card-alert { background: linear-gradient(180deg, #FFF7F5, #FCEBE7); border-color: rgba(176, 32, 32, .35); }
+.ce-card-alert::before { background: linear-gradient(90deg, #C0392B, rgba(176, 32, 32, .12)); }
+.ce-card-title {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--ce-serif); font-size: 21px; font-weight: 700; color: var(--ce-ink);
+}
+.ce-card-dark .ce-card-title { color: #FFF3E0; }
+.ce-card-title svg { width: 24px; height: 24px; flex: none; }
+.ce-note { font-size: 14px; color: var(--ce-ink-soft); }
+.ce-card-dark .ce-note { color: #D9C3A4; }
+
+/* ---- numerals & labels ---- */
+.ce-figure { font-family: var(--ce-mono); font-weight: 700; letter-spacing: -.03em; line-height: 1.05; }
+.ce-figure.am { color: #B45309; }
+.ce-figure.gr { color: #1F5C39; }
+.ce-figure.rd { color: #991B1B; }
+.ce-label {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    color: #8A6A4E;
+}
+.ce-label.u { color: #991B1B; }
+
+/* ---- chips, pills and buttons ---- */
+.ce-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 700;
+    background: rgba(43, 24, 15, .08); color: #5A4130;
+}
+.ce-chip svg { width: 14px; height: 14px; }
+.ce-chip.up { background: rgba(46, 125, 79, .16); color: #1F5C39; }
+.ce-chip.down { background: rgba(176, 32, 32, .15); color: #8F1D1D; }
+.ce-chip.gold { background: rgba(240, 180, 87, .26); color: #7A4A0C; }
+.ce-chip.ink { background: rgba(24, 13, 6, .75); color: #F6D08A; }
+
+.ce-cta {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    height: 50px; padding: 0 20px;
+    border: none; border-radius: 14px;
+    font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(180deg, #E4A034, #B4571A);
+    color: #2A1207;
+    box-shadow: 0 14px 28px rgba(138, 58, 21, .42), inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -2px 0 rgba(90, 30, 10, .38);
+    transition: transform .15s, filter .2s, box-shadow .2s;
+}
+.ce-cta:hover { filter: brightness(1.06); transform: translateY(-2px); }
+.ce-cta:active { transform: translateY(1px); box-shadow: 0 6px 14px rgba(138, 58, 21, .38), inset 0 2px 5px rgba(90, 30, 10, .32); }
+.ce-cta svg { width: 20px; height: 20px; }
+.ce-cta.leaf { background: linear-gradient(180deg, #3E9A64, #1E5B38); color: #fff; box-shadow: 0 14px 28px rgba(30, 91, 56, .4), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.ce-cta.rust { background: linear-gradient(180deg, #C0492A, #8F1D1D); color: #fff; box-shadow: 0 14px 28px rgba(143, 29, 29, .4), inset 0 1px 0 rgba(255, 255, 255, .3); }
+.ce-cta.pale { background: linear-gradient(180deg, #FFFAF0, #F1E2C9); color: #4A2A15; border: 1px solid rgba(168, 69, 28, .28); box-shadow: 0 10px 20px rgba(15, 8, 3, .22), inset 0 1px 0 #fff; }
+.ce-cta.ghost { background: rgba(255, 255, 255, .07); color: #FFF3E0; border: 1px solid rgba(240, 180, 87, .45); box-shadow: none; }
+.ce-cta.ghost:hover { background: rgba(240, 180, 87, .18); }
+.ce-cta.sm { height: 42px; padding: 0 16px; font-size: 15px; border-radius: 12px; }
+.ce-cta:disabled { opacity: .6; cursor: progress; transform: none; }
+
+.ce-pill {
+    height: 44px; padding: 0 18px; border-radius: 12px;
+    border: 1px solid rgba(168, 69, 28, .28); background: #FFFAF0;
+    color: var(--ce-ink); font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: background .2s, color .2s, box-shadow .2s;
+}
+.ce-pill:hover { box-shadow: 0 10px 20px rgba(15, 8, 3, .2); }
+.ce-pill.on { background: linear-gradient(180deg, #33200F, #20130A); color: #F6D08A; border-color: rgba(240, 180, 87, .4); }
+
+.ce-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+.ce-tag.paid { background: rgba(46, 125, 79, .16); color: #1E5B38; }
+.ce-tag.partial { background: rgba(217, 131, 36, .2); color: #8A4B08; }
+.ce-tag.unpaid { background: rgba(176, 32, 32, .16); color: #8F1D1D; }
+.ce-tag.owner { background: rgba(138, 58, 21, .16); color: var(--ce-rust); }
+.ce-tag.staff { background: rgba(46, 125, 79, .16); color: #1E5B38; }
+
+/* ---- list rows ---- */
+.ce-list { display: grid; gap: 12px; }
+.ce-row {
+    position: relative; width: 100%; text-align: left;
+    padding: 16px 18px; border-radius: 18px;
+    font: inherit; color: inherit; cursor: pointer;
+    background: linear-gradient(180deg, #FFFCF6, #F7EDDD);
+    border: 1px solid var(--ce-line);
+    box-shadow: 0 12px 26px rgba(15, 8, 3, .28), inset 0 1px 0 #fff;
+    transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+.ce-row:hover { transform: translateY(-3px); border-color: rgba(168, 69, 28, .45); box-shadow: 0 22px 44px rgba(15, 8, 3, .36), inset 0 1px 0 #fff; }
+.ce-row-in { display: flex; align-items: center; gap: 16px; }
+.ce-id {
+    flex: none; min-width: 64px; padding: 9px 12px; border-radius: 13px;
+    font-family: var(--ce-mono); font-size: 18px; font-weight: 700; text-align: center;
+    color: var(--ce-rust);
+    background: linear-gradient(180deg, #F8E6C9, #ECCFA6);
+    border: 1px solid rgba(168, 69, 28, .26);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+.ce-row-title { font-family: var(--ce-serif); font-size: 20px; font-weight: 700; color: var(--ce-ink); }
+.ce-row-meta { font-size: 14px; color: var(--ce-ink-soft); margin-top: 2px; }
+.ce-chev { width: 20px; height: 20px; color: #A98D6F; flex: none; }
+
+.ce-empty {
+    padding: 48px 24px; text-align: center; border-radius: 20px;
+    border: 1.5px dashed rgba(240, 180, 87, .45);
+    background: rgba(27, 15, 7, .45);
+    color: #EDDCC3;
+}
+.ce-empty svg { width: 40px; height: 40px; color: var(--ce-gold); margin-bottom: 10px; }
+.ce-empty b { display: block; font-family: var(--ce-serif); font-size: 22px; color: #FFF6E6; margin-bottom: 4px; }
+
+.ce-spin { display: flex; justify-content: center; padding: 70px 0; color: var(--ce-gold); }
+.ce-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ============================================================
+   Dashboard — the market band and the ledger tiles
+   ============================================================ */
+.ce-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.ce-greet { color: #FFF6E6; }
+.ce-greet h1 {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-family: var(--ce-serif); font-size: clamp(28px, 3.6vw, 42px); font-weight: 700;
+    line-height: 1.08; color: #FFF6E6; text-shadow: 0 6px 26px rgba(0, 0, 0, .55);
+}
+.ce-greet p { margin-top: 8px; font-size: 17px; color: #E3D0B4; }
+.ce-date {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+    padding: 16px 22px;
+}
+.ce-date-v { font-family: var(--ce-mono); font-size: 22px; font-weight: 700; margin-top: 3px; }
+.ce-pen {
+    width: 38px; height: 38px; border-radius: 12px; flex: none;
+    border: 1px solid rgba(240, 180, 87, .45); background: rgba(240, 180, 87, .14);
+    color: #FFF3E0; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background .2s, transform .15s;
+}
+.ce-pen:hover { background: rgba(240, 180, 87, .35); transform: translateY(-2px); }
+.ce-pen svg { width: 18px; height: 18px; }
+.ce-edit { display: flex; gap: 8px; max-width: 440px; }
+.ce-edit input {
+    flex: 1; height: 50px; padding: 0 16px; border-radius: 14px; font: inherit; font-size: 17px;
+    border: 2px solid var(--ce-gold); background: #FFFCF6; color: var(--ce-ink);
+}
+.ce-edit button {
+    width: 54px; height: 50px; border: none; border-radius: 14px; cursor: pointer;
+    background: linear-gradient(180deg, #E4A034, #B4571A); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 12px 24px rgba(138, 58, 21, .4), inset 0 1px 0 rgba(255, 255, 255, .45);
+}
+.ce-edit button svg { width: 20px; height: 20px; }
+
+/* market band: pods drying under a floating dark-glass readout */
+.ce-band {
+    position: relative; overflow: hidden; border-radius: 28px; min-height: 390px;
+    border: 1px solid rgba(240, 180, 87, .32);
+    box-shadow: 0 30px 70px rgba(8, 4, 1, .6);
+}
+.ce-band > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: ceKen 28s ease-in-out infinite alternate; }
+.ce-band-scrim { position: absolute; inset: 0; background: linear-gradient(105deg, rgba(16, 9, 4, .93) 0%, rgba(20, 11, 5, .62) 48%, rgba(20, 11, 5, .12) 100%); }
+.ce-readout {
+    position: absolute; left: 30px; top: 30px; bottom: 30px; width: 560px; max-width: calc(100% - 60px);
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 30px 32px; border-radius: 22px;
+    background: rgba(24, 13, 6, .66);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(240, 180, 87, .38);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 24px 50px rgba(0, 0, 0, .45);
+    color: #FFF3E0;
+}
+.ce-live { display: flex; align-items: center; gap: 9px; }
+.ce-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ce-leaf); box-shadow: 0 0 0 0 rgba(46, 125, 79, .6); animation: cePulse 2.2s infinite; }
+.ce-big {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 12px;
+    font-family: var(--ce-mono); font-weight: 700; font-size: clamp(34px, 4.6vw, 56px);
+    letter-spacing: -.04em; line-height: 1.04; color: var(--ce-gold);
+}
+.ce-big small { font-family: var(--ce-sans); font-size: 22px; font-weight: 600; color: #DCC5A4; }
+.ce-lock { width: 36px; height: 36px; color: var(--ce-gold); }
+.ce-caption { margin-top: 14px; font-size: 14.5px; line-height: 1.55; color: #DCC5A4; }
+.ce-chart {
+    position: absolute; right: 30px; bottom: 30px; width: 370px; height: 158px; padding: 14px;
+    border-radius: 20px;
+    background: rgba(24, 13, 6, .62);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(240, 180, 87, .34);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+.ce-chart svg { width: 100%; height: 100%; }
+.ce-chart-mark { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 46px; color: rgba(240, 180, 87, .5); }
+
+.ce-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+.ce-col { display: flex; flex-direction: column; gap: 22px; }
+.ce-tile { cursor: pointer; transition: transform .2s, box-shadow .2s; }
+.ce-tile:hover { transform: translateY(-5px); box-shadow: 0 30px 60px rgba(8, 4, 1, .48), inset 0 1px 0 #fff; }
+.ce-tile-tall { min-height: 300px; display: flex; flex-direction: column; justify-content: space-between; }
+.ce-tile-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ce-tile-num { font-family: var(--ce-mono); font-size: 13px; font-weight: 700; color: var(--ce-clay); letter-spacing: .08em; }
+.ce-tile-val { margin-top: 14px; font-size: clamp(30px, 3.4vw, 46px); }
+.ce-tile-sub { margin-top: 10px; font-size: 14.5px; color: var(--ce-ink-soft); }
+.ce-seal { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; }
+.ce-tile-art { position: absolute; right: 0; bottom: 0; width: 56%; height: 100%; overflow: hidden; border-radius: 0 20px 20px 0; pointer-events: none; }
+.ce-tile-art img { width: 100%; height: 100%; object-fit: cover; opacity: .3; -webkit-mask-image: linear-gradient(90deg, transparent, #000 62%); mask-image: linear-gradient(90deg, transparent, #000 62%); }
+.ce-tile-in { position: relative; z-index: 1; }
+
+/* entrance: the first value drifts the sheet in, the second keeps it breathing */
+.ce-rise { animation: ceRise .6s cubic-bezier(.2, .8, .2, 1) both; }
+.ce-d1 { animation-delay: .06s; }
+.ce-d2 { animation-delay: .12s; }
+.ce-d3 { animation-delay: .18s; }
+.ce-d4 { animation-delay: .24s; }
+.ce-d5 { animation-delay: .3s; }
+.ce-d6 { animation-delay: .36s; }
+
+@keyframes ceRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ceDrop { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cePulse { 0% { box-shadow: 0 0 0 0 rgba(46, 125, 79, .55); } 100% { box-shadow: 0 0 0 12px rgba(46, 125, 79, 0); } }
+@keyframes ceKen { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.1) translate(-1%, -1.4%); } }
+
+/* ============================================================
+   Sign-in — the first page
+   ============================================================ */
+.ce-auth { display: grid; grid-template-columns: 1.15fr .85fr; min-height: 100vh; }
+.ce-auth-art { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 42px 44px; }
+.ce-auth-art > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: ceKen 44s ease-in-out infinite alternate; }
+.ce-auth-scrim { position: absolute; inset: 0; background: linear-gradient(150deg, rgba(16, 9, 4, .82) 0%, rgba(24, 13, 6, .55) 42%, rgba(16, 9, 4, .93) 100%); }
+.ce-auth-art > * { position: relative; z-index: 2; }
+.ce-auth-brand { display: flex; align-items: center; gap: 14px; }
+.ce-auth-brand .ce-logo { width: 62px; height: 62px; }
+.ce-auth-brand .ce-word b { font-size: 26px; color: #FFF6E6; }
+.ce-auth-pitch { max-width: 30ch; }
+.ce-auth-pitch h1 {
+    font-family: var(--ce-serif); font-size: clamp(38px, 4.6vw, 62px); font-weight: 700;
+    line-height: 1.03; color: #FFF6E6; letter-spacing: -.015em; text-shadow: 0 10px 34px rgba(0, 0, 0, .6);
+}
+.ce-auth-pitch h1 em { font-style: italic; color: var(--ce-gold); }
+.ce-auth-pitch p { margin-top: 16px; font-size: 18px; line-height: 1.55; color: #EADCC4; max-width: 46ch; }
+.ce-rule { width: 92px; height: 3px; margin: 22px 0; border-radius: 2px; background: linear-gradient(90deg, var(--ce-gold), rgba(240, 180, 87, 0)); }
+.ce-feats { display: flex; flex-wrap: wrap; gap: 10px; }
+.ce-feat {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 15px; border-radius: 999px;
+    background: rgba(24, 13, 6, .55); border: 1px solid rgba(240, 180, 87, .3);
+    color: #F3E4CE; font-size: 14px; font-weight: 600;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.ce-feat svg { width: 16px; height: 16px; color: var(--ce-gold); }
+.ce-auth-panel {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    padding: 48px 40px;
+    background: linear-gradient(180deg, #FFFBF3 0%, #F5E7D2 100%);
+}
+.ce-auth-panel::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(240, 180, 87, .8), transparent);
+}
+.ce-auth-card { width: 100%; max-width: 430px; animation: ceRise .7s cubic-bezier(.2, .8, .2, 1) both; }
+.ce-auth-card h2 { font-family: var(--ce-serif); font-size: 34px; font-weight: 700; color: var(--ce-ink); }
+.ce-auth-card .ce-lead { margin-top: 8px; font-size: 16.5px; color: var(--ce-ink-soft); }
+.ce-field { margin-top: 18px; }
+.ce-field label { display: block; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #7A5C42; }
+.ce-input, .ce-auth-card input {
+    width: 100%; height: 54px; margin-top: 8px; padding: 0 16px;
+    border-radius: 14px; border: 1.5px solid rgba(138, 58, 21, .3);
+    background: #FFFDF8; color: var(--ce-ink); font: inherit; font-size: 17px;
+    box-shadow: inset 0 2px 5px rgba(90, 60, 30, .08);
+    transition: border-color .2s, box-shadow .2s;
+}
+.ce-input:focus, .ce-auth-card input:focus { outline: none; border-color: var(--ce-amber); box-shadow: 0 0 0 4px rgba(217, 131, 36, .22); }
+.ce-pass { position: relative; }
+.ce-pass button {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    margin-top: 4px; padding: 8px; border: none; border-radius: 10px; background: transparent;
+    color: var(--ce-ink-soft); cursor: pointer;
+}
+.ce-pass button:hover { color: var(--ce-rust); background: rgba(168, 69, 28, .08); }
+.ce-pass button svg { width: 20px; height: 20px; }
+.ce-error {
+    margin-top: 18px; padding: 13px 16px; border-radius: 13px;
+    background: #FEF0EC; border: 1.5px solid rgba(176, 32, 32, .4); color: #8F1D1D;
+    font-size: 15px; font-weight: 600;
+}
+.ce-auth-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(138, 58, 21, .18); }
+.ce-auth-foot p { margin-top: 10px; font-size: 13.5px; color: var(--ce-ink-soft); }
+.ce-demo {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 16px; padding: 14px 16px; border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255, 250, 240, .95), rgba(244, 231, 210, .95));
+    border: 1.5px dashed rgba(138, 58, 21, .4);
+}
+.ce-demo svg { width: 24px; height: 24px; color: var(--ce-clay); flex: none; }
+.ce-demo b { display: block; font-size: 15.5px; color: var(--ce-ink); }
+.ce-demo span { font-size: 13px; color: var(--ce-ink-soft); }
+
+/* ============================================================
+   Narrow screens
+   ============================================================ */
+/* The sign-in page keeps its two-column composition down to small tablets, so a
+   laptop-width preview still shows the photograph beside the form. */
+@media (max-width: 1023px) {
+    .ce-auth-art { padding: 32px 30px; }
+    .ce-auth-panel { padding: 36px 28px; }
+    .ce-auth-pitch h1 { font-size: clamp(32px, 4.4vw, 46px); }
+    .ce-auth-pitch p { font-size: 16.5px; }
+    .ce-tiles { grid-template-columns: 1fr; }
+    .ce-tile-tall { min-height: 0; }
+    .ce-band { min-height: 460px; }
+    .ce-readout { position: relative; left: 0; top: 0; bottom: auto; width: auto; max-width: none; margin: 16px; padding: 24px 22px; }
+    .ce-chart { position: relative; right: 0; bottom: 0; width: auto; height: 150px; margin: 0 16px 16px; }
+    .ce-banner-in { padding: 20px 20px; }
+    .ce-banner { min-height: 186px; }
+    .ce-card { padding: 18px; }
+    .ce-hdr { padding: 10px 14px; }
+    .ce-word b { font-size: 18px; }
+    .ce-word span { font-size: 9px; letter-spacing: .16em; }
+}
+
+/* Narrow phones: the sign-in page stacks — photograph band, then the form. */
+@media (max-width: 899px) {
+    .ce-auth { grid-template-columns: 1fr; }
+    .ce-auth-art { min-height: 340px; padding: 26px 22px 30px; }
+    .ce-auth-pitch h1 { font-size: 34px; }
+    .ce-auth-pitch p { font-size: 16px; }
+    .ce-auth-panel { padding: 30px 20px 48px; }
+}
+
+/* ============================================================
+   Form furniture shared by the dialogs
+   ============================================================ */
+.ce-dialog {
+    border-radius: 22px;
+    border: 1px solid rgba(240, 180, 87, .45);
+    background: linear-gradient(180deg, #FFFCF6, #F6E9D6);
+    box-shadow: 0 34px 70px rgba(8, 4, 1, .6);
+}
+.ce-dialog-title { font-family: var(--ce-serif); font-size: 26px; font-weight: 700; color: var(--ce-ink); }
+.ce-dialog .ce-field label { color: #7A5C42; }
+.ce-input::placeholder { color: #B29577; }
+textarea.ce-input { height: auto; min-height: 96px; padding: 13px 16px; line-height: 1.5; resize: vertical; }
+.ce-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .65; }
+
+/* ============================================================
+   Calculator keys and the screen lock
+   ============================================================ */
+.ce-key {
+    height: 48px; border-radius: 12px; cursor: pointer;
+    font-family: var(--ce-mono); font-size: 18px; font-weight: 700;
+    color: var(--ce-ink);
+    background: linear-gradient(180deg, #FFFAF0, #F1E2C9);
+    border: 1px solid rgba(138, 58, 21, .22);
+    box-shadow: 0 6px 14px rgba(15, 8, 3, .18), inset 0 1px 0 #fff;
+    transition: transform .12s, filter .2s;
+}
+.ce-key:hover { filter: brightness(1.03); transform: translateY(-1px); }
+.ce-key:active { transform: translateY(1px); }
+.ce-key.op { background: linear-gradient(180deg, #E4A034, #C1741F); color: #2A1207; }
+.ce-key.eq { background: linear-gradient(180deg, #C2632A, #8F3D17); color: #fff; }
+
+.ce-lockscreen { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: var(--ce-bark); }
+.ce-lockscreen > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .3; }
+.ce-lockscreen-scrim {
+    position: absolute; inset: 0;
+    background: radial-gradient(680px 480px at 50% 42%, rgba(138, 58, 21, .55), transparent 72%), rgba(16, 9, 4, .9);
+}
+.ce-lockscreen-in {
+    position: relative; z-index: 2; min-height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 34px 20px; overflow-y: auto;
+}
+.ce-lockscreen-in h1 { margin-top: 16px; font-family: var(--ce-serif); font-size: 32px; font-weight: 700; color: #FFF6E6; }
+.ce-lockscreen-in p { margin-top: 6px; color: #E3D0B4; }
+.ce-pindot { width: 15px; height: 15px; border-radius: 50%; border: 2px solid #A98D6F; }
+.ce-pindot.on { background: var(--ce-gold); border-color: var(--ce-gold); box-shadow: 0 0 12px rgba(240, 180, 87, .7); }
+.ce-lockpin {
+    width: 74px; height: 74px; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ce-mono); font-size: 28px; font-weight: 700;
+    color: var(--ce-ink);
+    background: linear-gradient(180deg, #FFFAF0, #F1E2C9);
+    border: 1px solid rgba(240, 180, 87, .4);
+    box-shadow: 0 12px 26px rgba(8, 4, 1, .5), inset 0 1px 0 #fff;
+    transition: transform .12s, box-shadow .2s;
+}
+.ce-lockpin:hover { transform: translateY(-2px); box-shadow: 0 16px 30px rgba(8, 4, 1, .55), inset 0 1px 0 #fff; }
+.ce-lockpin:active { transform: translateY(1px); }
+.ce-lockpin.ghost { background: transparent; color: #E3D0B4; box-shadow: none; border-color: rgba(240, 180, 87, .25); }
+.ce-lockpin.ok { background: linear-gradient(180deg, #3E9A64, #1E5B38); color: #fff; font-size: 19px; }
+.ce-lockout {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 30px;
+    background: none; border: none; cursor: pointer;
+    color: #E3D0B4; font-family: inherit; font-size: 16px; font-weight: 600;
+}
+.ce-lockout:hover { color: #fff; }
+
+/* ============================================================
+   Nested panels inside a ledger sheet
+   ============================================================ */
+.ce-sub {
+    padding: 16px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #FFFDF8, #F7EDDD);
+    border: 1px solid rgba(138, 58, 21, .18);
+}
+.ce-sub-leaf { background: linear-gradient(180deg, #F7FCF8, #E9F3EB); border-color: rgba(46, 125, 79, .26); }
+.ce-mini {
+    padding: 10px 12px;
+    border-radius: 13px;
+    background: #FFFCF6;
+    border: 1px solid rgba(138, 58, 21, .16);
+}

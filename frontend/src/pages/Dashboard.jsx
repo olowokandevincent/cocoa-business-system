@@ -2,49 +2,37 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, apiErr, naira } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Pencil, Check, Loader2 } from "lucide-react";
+import { ResponsiveContainer, AreaChart, Area, Tooltip as RTooltip, YAxis } from "recharts";
 import {
-  Users, Banknote, Package, TriangleAlert, ClipboardList, TrendingUp, Lock, ChevronRight, Loader2,
-  Pencil, Check, ArrowUp, ArrowDown, Minus,
-} from "lucide-react";
-
-function StatTile({ icon: Icon, title, value, sub, accent, testid, onClick, badge, urgent }) {
-  return (
-    <Card
-      data-testid={testid}
-      onClick={onClick}
-      className={`p-6 bg-white border-2 rounded-xl shadow-md transition-colors animate-fade-up ${
-        onClick ? "cursor-pointer hover:border-[#8C4A27]" : ""
-      } ${urgent ? "border-[#DC2626] bg-[#FEF2F2]" : "border-[#8C6D58]/30"}`}
-    >
-      <div className="flex items-start justify-between">
-        <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${urgent ? "bg-[#DC2626]" : "bg-[#F4ECE1]"}`}>
-          <Icon className={`w-7 h-7 ${urgent ? "text-white" : "text-[#8C4A27]"}`} />
-        </div>
-        {onClick && <ChevronRight className="w-6 h-6 text-[#8C6D58]" />}
-        {badge && <span className="text-xs font-bold uppercase tracking-wide text-[#5C4638] bg-[#F4ECE1] px-2 py-1 rounded-full">{badge}</span>}
-      </div>
-      <div className="mt-4">
-        <div className="text-base font-semibold text-[#5C4638]">{title}</div>
-        <div className={`font-heading text-4xl font-bold mt-1 ${accent || "text-[#24140E]"}`}>{value}</div>
-        {sub && <div className="text-sm text-[#5C4638] mt-1">{sub}</div>}
-      </div>
-    </Card>
-  );
-}
+  TrendBadge, LedgerTileTall, LedgerTileRow, LedgerTileRate,
+} from "@/components/dashboard/LedgerTile";
+import { PODS_DRYING, STORE_SACKS } from "@/styles/imagery";
 
 export default function Dashboard() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.role === "admin";
   const [stats, setStats] = useState(null);
+  const [live, setLive] = useState(null);
   const [editName, setEditName] = useState(false);
   const [nameVal, setNameVal] = useState("");
 
   useEffect(() => {
     api.get("/dashboard/stats").then((r) => setStats(r.data)).catch(() => {});
+  }, []);
+
+  // Live global cocoa market, for every signed-in user, refreshed so the readout keeps moving.
+  useEffect(() => {
+    let stop = false;
+    const pull = () =>
+      api.get("/cocoa-rate/live")
+        .then((r) => !stop && setLive(r.data))
+        .catch(() => !stop && setLive({ available: false }));
+    pull();
+    const t = setInterval(pull, 30000);
+    return () => { stop = true; clearInterval(t); };
   }, []);
 
   const saveName = async () => {
@@ -61,133 +49,163 @@ export default function Dashboard() {
 
   if (!stats)
     return (
-      <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#8C4A27]" /></div>
+      <div className="ce-spin">
+        <Loader2 className="w-10 h-10 animate-spin" />
+      </div>
     );
 
+  const today = new Date().toLocaleDateString("en-NG", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+
+  const series = (live?.trend_ngn?.length ? live.trend_ngn : live?.trend || []).map((p) => ({
+    date: p.date, value: p.value,
+  }));
+  const marketNgn = live?.available ? live.ngn_per_kg : null;
+  const marketFigure = marketNgn
+    ? naira(marketNgn)
+    : live?.available && live.usd_per_kg != null
+      ? `$${live.usd_per_kg.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+      : "—";
+  const chartReady = live?.available && series.length > 1;
+
   return (
-    <div>
-      <div className="relative rounded-2xl overflow-hidden mb-8 animate-fade-up border-2 border-[#8C6D58]/40 shadow-lg">
-        <img
-          src="https://images.pexels.com/photos/37516665/pexels-photo-37516665.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
-          alt="Cocoa pods harvest"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#3B1E10] via-[#3B1E10]/90 to-[#3B1E10]/50" />
-        <div className="relative z-10 p-8 sm:p-10">
-          <p className="text-base sm:text-lg text-[#E3D5C5] font-medium">
-            {new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-          </p>
-          {editName ? (
-            <div className="flex items-center gap-2 mt-2 max-w-md">
-              <Input
-                autoFocus
-                value={nameVal}
-                data-testid="owner-name-input"
-                onChange={(e) => setNameVal(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && saveName()}
-                placeholder="Your name"
-                className="h-12 text-lg bg-white/95 border-2 border-[#D97706] text-[#24140E]"
-              />
-              <Button onClick={saveName} data-testid="save-owner-name" className="h-12 bg-[#D97706] hover:bg-[#b45309] text-white font-bold">
-                <Check className="w-5 h-5" />
-              </Button>
-            </div>
+    <div className="ce-page ce-stack">
+      {/* Dateline sheet */}
+      <div className="ce-card ce-date ce-rise ce-d1">
+        <div>
+          <div className="ce-eyebrow dark">The cocoa ledger · daily record</div>
+          <div className="ce-date-v" data-testid="dashboard-dateline">{today}</div>
+        </div>
+        <span className="ce-chip gold">{isAdmin ? "Owner" : "Staff"}</span>
+      </div>
+
+      {/* Greeting */}
+      <div className="ce-greet ce-rise ce-d2">
+        <h1>
+          Good day, {user?.name || "there"}.
+          <button
+            type="button"
+            className="ce-pen"
+            onClick={() => { setNameVal(user?.name || ""); setEditName(true); }}
+            data-testid="edit-owner-name"
+            aria-label="Edit your name"
+          >
+            <Pencil />
+          </button>
+        </h1>
+        <p>Here is what your store looks like today.</p>
+
+        {editName && (
+          <div className="ce-edit" style={{ marginTop: 16 }}>
+            <input
+              autoFocus
+              value={nameVal}
+              data-testid="owner-name-input"
+              aria-label="Your name"
+              placeholder="Your name"
+              onChange={(e) => setNameVal(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+            />
+            <button type="button" onClick={saveName} data-testid="save-owner-name" aria-label="Save">
+              <Check />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Market band over the drying pods */}
+      <div className="ce-band ce-rise ce-d3">
+        <img src={PODS_DRYING} alt="Split cocoa pods drying on a mat" />
+        <div className="ce-band-scrim" aria-hidden="true" />
+
+        <div className="ce-readout">
+          <div className="ce-live">
+            <span className="ce-dot" />
+            <span className="ce-eyebrow">Live global cocoa market</span>
+          </div>
+          <div className="ce-big">
+            <span data-testid="dashboard-market-price">{marketFigure}</span>
+            <small>/kg</small>
+            {live?.available && (
+              <TrendBadge trend={live.direction} changePct={live.change_pct}
+                testid="dashboard-live-trend" />
+            )}
+          </div>
+          <div className="ce-caption">
+            {live == null
+              ? "Fetching the world market…"
+              : live.available
+                ? <>ICE cocoa futures, converted at ₦{live.usdngn?.toLocaleString()}/$ · {live.date}</>
+                : (live.message || "The global market is unreachable right now.")}
+          </div>
+        </div>
+
+        <div className="ce-chart" data-testid="dashboard-market-chart">
+          {chartReady ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={series} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+                <defs>
+                  <linearGradient id="ceMarketFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#F0B457" stopOpacity={0.45} />
+                    <stop offset="1" stopColor="#F0B457" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <YAxis hide domain={["auto", "auto"]} />
+                <RTooltip
+                  formatter={(v) => [naira(v) + "/kg", "Market"]}
+                  contentStyle={{ borderRadius: 14, border: "1px solid rgba(240,180,87,.5)", background: "rgba(24,13,6,.92)", color: "#FFF3E0" }}
+                  labelStyle={{ color: "#F0B457" }}
+                />
+                <Area type="monotone" dataKey="value" stroke="#F0B457" strokeWidth={3.5}
+                  strokeLinecap="round" fill="url(#ceMarketFill)" dot={false}
+                  activeDot={{ r: 6, fill: "#F0B457", stroke: "#2A1810", strokeWidth: 2 }}
+                  animationDuration={1600} />
+              </AreaChart>
+            </ResponsiveContainer>
           ) : (
-            <h1 className="font-heading text-4xl sm:text-5xl font-bold text-[#FAF5EF] mt-1 flex items-center gap-3 flex-wrap">
-              Good day, {user?.name || "there"}.
-              <button
-                onClick={() => { setNameVal(user?.name || ""); setEditName(true); }}
-                data-testid="edit-owner-name"
-                className="text-[#D97706] hover:text-[#f59e0b] p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label="Edit your name"
-              >
-                <Pencil className="w-6 h-6" />
-              </button>
-            </h1>
+            <span className="ce-chart-mark">₦</span>
           )}
-          <p className="text-lg text-[#E3D5C5] mt-2">Here is what your store looks like today.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatTile
-          testid="dashboard-stat-total-customers"
-          icon={Users}
-          title="Registered Customers"
-          value={stats.total_customers}
-          badge="Active"
-          onClick={() => navigate("/customers")}
-        />
-        <StatTile
-          testid="dashboard-stat-total-money-owed"
-          icon={Banknote}
-          title="Total Money Currently Owed"
-          value={naira(stats.total_owed)}
-          accent="text-[#9A3412]"
-          sub="Across all customers"
-        />
-        <StatTile
-          testid="dashboard-stat-cocoa-in-store"
-          icon={Package}
-          title="Cocoa Currently in Store"
-          value={`${stats.cocoa_in_store_kg.toLocaleString()} kg`}
-          sub={`≈ ${stats.cocoa_in_store_bags} bags (64kg each)`}
-          accent="text-[#1E5E3A]"
-          onClick={() => navigate("/cocoa-records")}
-        />
-        <StatTile
-          testid="dashboard-stat-unscaled-count"
-          icon={TriangleAlert}
-          title="Unscaled Cocoa"
-          value={stats.unscaled_count}
-          sub={stats.unscaled_count > 0 ? "Needs weight entry" : "All deliveries weighed"}
-          urgent={stats.unscaled_count > 0}
-          onClick={() => navigate("/cocoa-records")}
-        />
-        <StatTile
-          testid="dashboard-stat-todays-records"
-          icon={ClipboardList}
-          title="Today's Records"
-          value={stats.todays_records}
-          sub="Deliveries & updates today"
-          onClick={() => navigate("/cocoa-records")}
-        />
-        <Card
-          data-testid="dashboard-stat-cocoa-rate-clickable"
-          onClick={() => navigate("/cocoa-rate")}
-          className="p-6 bg-[#3B1E10] text-[#FAF5EF] border-2 border-[#8C4A27] rounded-xl shadow-md cursor-pointer hover:border-[#D97706] transition-colors animate-fade-up"
-        >
-          <div className="flex items-start justify-between">
-            <div className="w-14 h-14 rounded-xl bg-[#8C4A27] flex items-center justify-center">
-              <TrendingUp className="w-7 h-7 text-white" />
-            </div>
-            <Lock className="w-6 h-6 text-[#D97706]" />
-          </div>
-          <div className="mt-4">
-            <div className="text-base font-semibold text-[#E3D5C5]">Cocoa Rate</div>
-            <div className="font-heading text-2xl font-bold mt-1" data-testid="dashboard-rate-confidential">
-              Confidential
-            </div>
-            {stats.rate_trend && stats.rate_trend !== "flat" && stats.rate_change_pct != null ? (
-              <div
-                data-testid="dashboard-rate-trend"
-                className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm ${
-                  stats.rate_trend === "up" ? "bg-[#1E5E3A]/40 text-[#6ee7a8]" : "bg-[#991B1B]/40 text-[#fca5a5]"
-                }`}
-              >
-                {stats.rate_trend === "up" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
-                Market {stats.rate_trend} {Math.abs(stats.rate_change_pct)}%
-              </div>
-            ) : (
-              <div data-testid="dashboard-rate-trend" className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm bg-[#4d2a17] text-[#E3D5C5]">
-                <Minus className="w-4 h-4" /> Rate steady
-              </div>
-            )}
-            <div className="text-sm text-[#D97706] mt-2 flex items-center gap-1 font-semibold">
-              Tap to view on the private rate page <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
-        </Card>
+      {/* Ledger tiles */}
+      <div className="ce-tiles">
+        <div className="ce-col">
+          <LedgerTileTall
+            index={1} label="Registered customers" value={stats.total_customers}
+            sub="Account holders in your book" testid="dashboard-stat-total-customers"
+            delay="ce-d1" onClick={() => navigate("/customers")} />
+          <LedgerTileTall
+            index={2} label="Total money owed" value={naira(stats.total_owed)}
+            sub="Across all customers" testid="dashboard-stat-total-money-owed"
+            delay="ce-d2" valueTone="am" />
+          <LedgerTileTall
+            index={3} label="Cocoa in store" value={`${stats.cocoa_in_store_kg.toLocaleString()} kg`}
+            sub={`≈ ${stats.cocoa_in_store_bags} bags of 64 kg`} testid="dashboard-stat-cocoa-in-store"
+            delay="ce-d3" valueTone="gr" bagImage={STORE_SACKS}
+            onClick={() => navigate("/cocoa-records")} />
+        </div>
+
+        <div className="ce-col">
+          <LedgerTileRow
+            index={4} label="Unscaled cocoa" value={stats.unscaled_count}
+            sub={stats.unscaled_count > 0 ? "Needs weight entry" : "All deliveries weighed"}
+            testid="dashboard-stat-unscaled-count" delay="ce-d4"
+            labelTone={stats.unscaled_count > 0 ? "u" : undefined}
+            valueColor={stats.unscaled_count > 0 ? "#991B1B" : undefined}
+            onClick={() => navigate("/cocoa-records")} />
+          <LedgerTileRow
+            index={5} label="Today's records" value={stats.todays_records}
+            sub="Deliveries & updates today" testid="dashboard-stat-todays-records"
+            delay="ce-d5" onClick={() => navigate("/cocoa-records")} />
+          <LedgerTileRate
+            index={6} testid="dashboard-stat-cocoa-rate-clickable" delay="ce-d6"
+            badge={<TrendBadge trend={stats.rate_trend} changePct={stats.rate_change_pct}
+              testid="dashboard-rate-trend" />}
+            onClick={() => navigate("/cocoa-rate")} />
+          <span className="ce-sr" data-testid="dashboard-rate-confidential">Cocoa rate is confidential</span>
+        </div>
       </div>
     </div>
   );

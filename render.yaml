@@ -1,0 +1,39 @@
+# Render Blueprint — one web service running the API and serving the compiled React bundle
+# from the same origin (see Dockerfile). Setup steps: DEPLOY.md.
+#
+# Deploy from the default branch, so merge the deployment PR first.
+services:
+  - type: web
+    name: cocoa-ledger
+    runtime: docker
+    region: frankfurt
+    # `free` sleeps after 15 minutes idle, so the first load from a phone can take ~1 minute.
+    # Switch this to `starter` if you want it always warm.
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /openapi.json
+    autoDeploy: true
+    envVars:
+      # MongoDB Atlas connection string, e.g.
+      # mongodb+srv://user:password@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: cocoa_ledger
+      # Signs the login sessions. Generated once for you; changing it logs everyone out.
+      - key: JWT_SECRET
+        generateValue: true
+      # Your owner login — this account is created on first boot.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Optional: realtime USD→NGN rate for the naira chart. Leave blank to fall back to Yahoo.
+      - key: ALPHA_VANTAGE_KEY
+        sync: false
+      # Optional: the "Enter demo" login. This account has owner-level access — leave both
+      # blank to switch it off, or set them and share the credentials knowingly.
+      - key: DEMO_EMAIL
+        sync: false
+      - key: DEMO_PASSWORD
+        sync: false

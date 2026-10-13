@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, apiErr, fmtDate } from "@/lib/api";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { PageHeader } from "@/components/PageHeader";
+import { ESTATE } from "@/styles/imagery";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
@@ -12,7 +9,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserCog, UserPlus, Loader2, Trash2, ShieldCheck, User } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { UserPlus, Loader2, Trash2, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Staff() {
@@ -64,100 +62,128 @@ export default function Staff() {
     }
   };
 
+  const owners = (staff || []).filter((s) => s.role === "admin").length;
+  const helpers = (staff || []).filter((s) => s.role !== "admin").length;
+
   return (
-    <div className="animate-fade-up">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-heading text-4xl font-bold text-[#3B1E10] flex items-center gap-3">
-            <UserCog className="w-9 h-9 text-[#8C4A27]" /> Staff Management
-          </h1>
-          <p className="text-lg text-[#5C4638] mt-1">Only the owner can create and manage staff accounts.</p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="add-staff-button"
-              className="h-14 px-6 text-lg font-bold bg-[#8C4A27] hover:bg-[#3B1E10] text-white border-2 border-[#3B1E10]/20">
-              <UserPlus className="w-5 h-5 mr-2" /> Add Staff
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-[#FAF5EF]">
-            <DialogHeader><DialogTitle className="font-heading text-2xl text-[#3B1E10]">New Staff Account</DialogTitle></DialogHeader>
-            <form onSubmit={add} className="space-y-4">
-              <div>
-                <Label className="text-base font-semibold">Full name *</Label>
-                <Input required value={form.name} data-testid="staff-name-input"
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
-              </div>
-              <div>
-                <Label className="text-base font-semibold">Email *</Label>
-                <Input type="email" required value={form.email} data-testid="staff-email-input"
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
-              </div>
-              <div>
-                <Label className="text-base font-semibold">Password *</Label>
-                <Input type="text" required value={form.password} data-testid="staff-password-input"
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="mt-1 h-12 text-lg bg-white border-2 border-[#8C6D58]" />
-              </div>
-              <DialogFooter>
-                <Button type="submit" data-testid="save-staff-button"
-                  className="w-full h-12 text-lg font-bold bg-[#8C4A27] hover:bg-[#3B1E10] text-white">Create Account</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="ce-page ce-stack">
+      <PageHeader
+        eyebrow="Who can open the book" image={ESTATE}
+        title="Staff & access"
+        subtitle={`${owners} owner${owners === 1 ? "" : "s"} · ${helpers} staff account${helpers === 1 ? "" : "s"}. Only the owner can create or remove accounts.`}
+        actions={
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <button data-testid="add-staff-button" className="ce-cta">
+                <UserPlus /> Add staff
+              </button>
+            </DialogTrigger>
+            <DialogContent className="ce-dialog">
+              <DialogHeader>
+                <DialogTitle className="ce-dialog-title">New staff account</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={add}>
+                <div className="ce-field">
+                  <label>Full name *</label>
+                  <input required value={form.name} data-testid="staff-name-input"
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="ce-input" placeholder="e.g. Ngozi Bassey" />
+                </div>
+                <div className="ce-field">
+                  <label>Email *</label>
+                  <input type="email" required value={form.email} data-testid="staff-email-input"
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="ce-input" placeholder="name@example.com" />
+                </div>
+                <div className="ce-field">
+                  <label>Password *</label>
+                  <input type="text" required value={form.password} data-testid="staff-password-input"
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    className="ce-input" placeholder="A password they will change" />
+                </div>
+                <DialogFooter className="mt-4">
+                  <button type="submit" data-testid="save-staff-button"
+                    className="ce-cta" style={{ width: "100%" }}>
+                    Create account
+                  </button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       {!staff ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#8C4A27]" /></div>
+        <div className="ce-spin"><Loader2 className="w-10 h-10 animate-spin" /></div>
       ) : (
-        <div className="grid gap-3" data-testid="staff-list">
-          {staff.map((s) => (
-            <Card key={s.id} data-testid={`staff-row-${s.id}`}
-              className="p-5 bg-white border-2 border-[#8C6D58]/30 flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${s.role === "admin" ? "bg-[#8C4A27]" : "bg-[#1E5E3A]"}`}>
-                {s.role === "admin" ? <ShieldCheck className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-heading text-xl font-semibold text-[#24140E] flex items-center gap-2">
-                  {s.name}
-                  <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${s.role === "admin" ? "bg-[#F4ECE1] text-[#8C4A27]" : "bg-[#e6f0ea] text-[#1E5E3A]"}`}>
-                    {s.role === "admin" ? "Owner" : "Staff"}
-                  </span>
+        <div className="ce-list" data-testid="staff-list">
+          {staff.map((s, i) => (
+            <article key={s.id} data-testid={`staff-row-${s.id}`}
+              className={`ce-card ce-rise ce-d${(i % 4) + 1}`}
+              style={{ padding: "18px 20px" }}>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="ce-id" style={{ minWidth: 52, borderRadius: "50%", height: 52, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                  {s.role === "admin" ? <ShieldCheck style={{ width: 24, height: 24 }} /> : <User style={{ width: 24, height: 24 }} />}
                 </div>
-                <div className="text-sm text-[#5C4638]">{s.email} · Added {fmtDate(s.created_at)}</div>
-              </div>
-              {s.role !== "admin" && (
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-[#5C4638]">{s.active ? "Active" : "Inactive"}</span>
-                    <Switch checked={s.active} onCheckedChange={() => toggleActive(s)} data-testid={`staff-active-toggle-${s.id}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="ce-row-title">{s.name}</span>
+                    <span className={`ce-tag ${s.role === "admin" ? "owner" : "staff"}`}>
+                      {s.role === "admin" ? "Owner" : "Staff"}
+                    </span>
+                    {!s.active && <span className="ce-tag unpaid">Inactive</span>}
                   </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button data-testid={`delete-staff-${s.id}`} className="text-[#991B1B] p-2 hover:bg-[#FEF2F2] rounded-lg">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-[#FAF5EF]">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="font-heading text-xl text-[#991B1B]">Remove {s.name}?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-[#5C4638]">This staff member will lose access immediately.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="h-11">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => remove(s.id)} className="h-11 bg-[#991B1B] hover:bg-[#7F1D1D] text-white font-bold">Remove</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <div className="ce-row-meta">{s.email} · Added {fmtDate(s.created_at)}</div>
                 </div>
-              )}
-            </Card>
+                {s.role !== "admin" && (
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-2">
+                      <span className="ce-label" style={{ letterSpacing: ".1em" }}>
+                        {s.active ? "Active" : "Inactive"}
+                      </span>
+                      <Switch checked={s.active} onCheckedChange={() => toggleActive(s)}
+                        data-testid={`staff-active-toggle-${s.id}`} />
+                    </span>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button data-testid={`delete-staff-${s.id}`} aria-label={`Remove ${s.name}`}
+                          className="ce-pen" style={{ background: "rgba(176,32,32,.14)", borderColor: "rgba(176,32,32,.4)", color: "#8F1D1D" }}>
+                          <Trash2 />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="ce-dialog">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="ce-dialog-title" style={{ color: "#8F1D1D" }}>
+                            Remove {s.name}?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="ce-note">
+                            This staff member loses access to the ledger immediately.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="ce-pill">Cancel</AlertDialogCancel>
+                          <AlertDialogAction asChild>
+                            <button onClick={() => remove(s.id)} className="ce-cta rust sm">Remove</button>
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
+              </div>
+            </article>
           ))}
         </div>
       )}
+
+      <div className="ce-card ce-card-dark ce-rise ce-d4">
+        <div className="ce-card-title"><ShieldCheck /> What staff can and cannot see</div>
+        <p className="ce-note" style={{ marginTop: 10 }}>
+          Staff can record customers, cocoa arrivals and repayments, and can see the live world
+          market. Your private buying rate stays yours to set, and only the owner can add or remove
+          accounts.
+        </p>
+      </div>
     </div>
   );
 }

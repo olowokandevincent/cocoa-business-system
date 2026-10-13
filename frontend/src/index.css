@@ -1,22 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* App tokens. The full visual language lives in styles/cocoa-estate.css,
+   which is loaded after this file (see src/index.js). */
 :root {
-    --bg-main: #FAF5EF;
-    --bg-card: #FFFFFF;
-    --bg-card-warm: #F4ECE1;
-    --cocoa-dark: #3B1E10;
-    --cocoa-accent: #8C4A27;
-    --amber-gold: #D97706;
-    --leaf-green: #1E5E3A;
+    --bg-main: #1B0F07;
+    --bg-card: #FFFCF6;
+    --bg-card-warm: #F6E9D6;
+    --cocoa-dark: #2B1A0F;
+    --cocoa-accent: #8A3A15;
+    --amber-gold: #D98324;
+    --leaf-green: #2E7D4F;
     --amber-warning: #9A3412;
-    --text-main: #24140E;
-    --text-muted: #5C4638;
-    --border-strong: #8C6D58;
-    --border-soft: #E3D5C5;
+    --text-main: #2B1A0F;
+    --text-muted: #6E553F;
+    --border-strong: #B08A63;
+    --border-soft: #E7D7BE;
 }
 
 body {
@@ -43,10 +45,9 @@ h1, h2, h3, .font-heading {
     color: #fff;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: var(--bg-card-warm); }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 3px solid var(--bg-card-warm); }
+::-webkit-scrollbar-track { background: #24140C; }
+::-webkit-scrollbar-thumb { background: #6B4526; border-radius: 8px; border: 3px solid #24140C; }
 
 @keyframes fadeUp {
     from { opacity: 0; transform: translateY(14px); }
@@ -60,32 +61,34 @@ h1, h2, h3, .font-heading {
 }
 .pulse-warn { animation: pulseWarn 2s infinite; }
 
+/* shadcn/ui tokens — warmed to the cocoa palette so dialogs, inputs and
+   popovers sit inside the estate theme. */
 @layer base {
     :root {
-        --background: 36 44% 96%;
-        --foreground: 20 47% 10%;
-        --card: 0 0% 100%;
-        --card-foreground: 20 47% 10%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 20 47% 10%;
-        --primary: 22 57% 35%;
-        --primary-foreground: 36 44% 96%;
-        --secondary: 33 39% 92%;
-        --secondary-foreground: 20 47% 10%;
-        --muted: 33 39% 92%;
-        --muted-foreground: 25 22% 35%;
-        --accent: 33 39% 88%;
-        --accent-foreground: 20 47% 10%;
-        --destructive: 0 70% 35%;
+        --background: 33 60% 90%;
+        --foreground: 24 48% 11%;
+        --card: 40 100% 99%;
+        --card-foreground: 24 48% 11%;
+        --popover: 40 100% 99%;
+        --popover-foreground: 24 48% 11%;
+        --primary: 19 74% 31%;
+        --primary-foreground: 36 100% 97%;
+        --secondary: 34 55% 85%;
+        --secondary-foreground: 24 48% 11%;
+        --muted: 34 45% 88%;
+        --muted-foreground: 28 25% 40%;
+        --accent: 34 55% 84%;
+        --accent-foreground: 24 48% 11%;
+        --destructive: 0 69% 41%;
         --destructive-foreground: 0 0% 98%;
-        --border: 28 24% 64%;
-        --input: 28 24% 64%;
-        --ring: 22 57% 35%;
-        --radius: 0.75rem;
+        --border: 28 30% 70%;
+        --input: 28 30% 66%;
+        --ring: 19 74% 31%;
+        --radius: 0.85rem;
     }
 }
 
 @layer base {
     * { @apply border-border; }
-    body { @apply bg-background text-foreground; }
+    body { @apply text-foreground; }
 }

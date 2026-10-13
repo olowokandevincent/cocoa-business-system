@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Bean, Loader2, Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2, Users, Banknote, Sprout, ShieldCheck, Sparkles } from "lucide-react";
+import { CocoaMark } from "@/components/CocoaMark";
+import { ESTATE } from "@/styles/imagery";
 
 export default function Login() {
   const { login, error } = useAuth();
@@ -13,6 +13,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [demo, setDemo] = useState(null);
+
+  // The demo account only exists when the operator has set one up.
+  useEffect(() => {
+    api.get("/auth/demo").then((r) => setDemo(r.data)).catch(() => setDemo(null));
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -22,44 +28,61 @@ export default function Login() {
     if (ok) navigate("/");
   };
 
+  const enterDemo = async () => {
+    setEmail(demo.email);
+    setPassword(demo.password);
+    setLoading(true);
+    const ok = await login(demo.email, demo.password);
+    setLoading(false);
+    if (ok) navigate("/");
+  };
+
   return (
-    <div className="min-h-screen grid lg:grid-cols-2" data-testid="login-container">
-      {/* Left: imagery */}
-      <div className="relative hidden lg:block">
-        <img
-          src="https://images.unsplash.com/photo-1743252878695-367d69dc87a8?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
-          alt="Cocoa pods on the tree"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-[#3B1E10]/70" />
-        <div className="relative z-10 h-full flex flex-col justify-end p-12 text-[#FAF5EF]">
-          <Bean className="w-14 h-14 text-[#D97706] mb-6" />
-          <h1 className="font-heading text-5xl font-bold leading-tight mb-4">
-            Your notebook,<br />now unbreakable.
+    <div className="ce-auth" data-testid="login-container">
+      {/* The estate, in full */}
+      <div className="ce-auth-art">
+        <img src={ESTATE} alt="Cocoa plantation" />
+        <div className="ce-auth-scrim" aria-hidden="true" />
+
+        <div className="ce-auth-brand">
+          <CocoaMark />
+          <span className="ce-word">
+            <b>Cocoa Ledger</b>
+            <span>Private Business Records</span>
+          </span>
+        </div>
+
+        <div className="ce-auth-pitch">
+          <div className="ce-eyebrow">Buying, weighing, settling — all season</div>
+          <h1>
+            Every pod, every naira,<br />
+            <em>on the record</em>.
           </h1>
-          <p className="text-xl text-[#E3D5C5] max-w-md">
-            Every customer, debt, and bag of cocoa — recorded, searchable, and never lost.
+          <div className="ce-rule" />
+          <p>
+            The notebook your grandfather kept, without the missing pages. Customers,
+            debts, fertilizer and cocoa in store — recorded once, findable forever.
           </p>
+          <div className="ce-feats">
+            <span className="ce-feat"><Users /> Customer ledgers</span>
+            <span className="ce-feat"><Banknote /> Debts &amp; repayments</span>
+            <span className="ce-feat"><Sprout /> Fertilizer tracking</span>
+            <span className="ce-feat"><ShieldCheck /> Owner &amp; staff access</span>
+          </div>
         </div>
       </div>
 
-      {/* Right: form */}
-      <div className="flex items-center justify-center p-6 sm:p-12 bg-[#FAF5EF]">
-        <div className="w-full max-w-md animate-fade-up">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <span className="w-12 h-12 rounded-full bg-[#8C4A27] flex items-center justify-center">
-              <Bean className="w-7 h-7 text-[#FAF5EF]" />
-            </span>
-            <span className="font-heading text-2xl font-bold text-[#3B1E10]">Cocoa Ledger</span>
-          </div>
+      {/* The way in */}
+      <div className="ce-auth-panel">
+        <div className="ce-auth-card">
+          <div className="ce-eyebrow dark">Cocoa Ledger</div>
+          <h2>Welcome back</h2>
+          <p className="ce-lead">Sign in to open your business records.</p>
 
-          <h2 className="font-heading text-4xl font-bold text-[#24140E] mb-2">Welcome back</h2>
-          <p className="text-lg text-[#5C4638] mb-8">Sign in to open your business records.</p>
-
-          <form onSubmit={submit} className="space-y-5">
-            <div>
-              <Label htmlFor="email" className="text-lg font-semibold text-[#24140E]">Email</Label>
-              <Input
+          <form onSubmit={submit}>
+            <div className="ce-field">
+              <label htmlFor="email">Email</label>
+              <input
                 id="email"
                 type="email"
                 data-testid="login-email-input"
@@ -70,14 +93,14 @@ export default function Login() {
                 autoCorrect="off"
                 spellCheck={false}
                 autoComplete="username"
-                className="mt-2 h-14 text-lg bg-white border-2 border-[#8C6D58] focus-visible:ring-4 focus-visible:ring-[#8C4A27]/30"
                 placeholder="you@example.com"
               />
             </div>
-            <div>
-              <Label htmlFor="password" className="text-lg font-semibold text-[#24140E]">Password</Label>
-              <div className="relative mt-2">
-                <Input
+
+            <div className="ce-field">
+              <label htmlFor="password">Password</label>
+              <div className="ce-pass">
+                <input
                   id="password"
                   type={showPass ? "text" : "password"}
                   data-testid="login-password-input"
@@ -88,40 +111,58 @@ export default function Login() {
                   autoCorrect="off"
                   spellCheck={false}
                   autoComplete="current-password"
-                  className="h-14 text-lg pr-14 bg-white border-2 border-[#8C6D58] focus-visible:ring-4 focus-visible:ring-[#8C4A27]/30"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   data-testid="toggle-password-visibility"
                   onClick={() => setShowPass((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5C4638] hover:text-[#8C4A27] p-1"
                   aria-label={showPass ? "Hide password" : "Show password"}
                 >
-                  {showPass ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                  {showPass ? <EyeOff /> : <Eye />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div data-testid="login-error" className="bg-[#FEF2F2] border-2 border-[#DC2626] text-[#991B1B] rounded-lg px-4 py-3 font-semibold">
-                {error}
-              </div>
+              <div data-testid="login-error" className="ce-error">{error}</div>
             )}
 
-            <Button
+            <button
               type="submit"
               data-testid="login-submit-button"
               disabled={loading}
-              className="w-full h-14 text-lg font-bold bg-[#8C4A27] hover:bg-[#3B1E10] text-white border-2 border-[#3B1E10]/20"
+              className="ce-cta"
+              style={{ width: "100%", marginTop: 22 }}
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Sign in</>}
-            </Button>
+              {loading ? <Loader2 className="animate-spin" /> : <>Sign in</>}
+            </button>
           </form>
 
-          <div className="mt-8 flex items-center gap-2 text-[#5C4638] text-sm">
-            <Lock className="w-4 h-4" />
-            Private system. Only the owner and trusted staff can log in.
+          {demo?.available && (
+            <div className="ce-demo">
+              <Sparkles />
+              <div style={{ flex: 1 }}>
+                <b>Just looking around?</b>
+                <span>Open the ledger with a ready-made demo account.</span>
+              </div>
+              <button
+                type="button"
+                onClick={enterDemo}
+                disabled={loading}
+                data-testid="login-demo-button"
+                className="ce-cta pale sm"
+              >
+                Enter demo
+              </button>
+            </div>
+          )}
+
+          <div className="ce-auth-foot">
+            <div className="ce-eyebrow dark" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Lock style={{ width: 15, height: 15 }} /> Private system
+            </div>
+            <p>Only the owner and trusted staff can log in. Sessions are locked to this device and end when you log out.</p>
           </div>
         </div>
       </div>

@@ -1,0 +1,9 @@
+.git
+.gitignore
+**/node_modules
+frontend/build
+backend/.env
+.env
+.env.base44-defaults
+docker-compose.base44.yml
+test_reports

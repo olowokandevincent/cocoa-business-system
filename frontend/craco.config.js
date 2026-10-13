@@ -138,6 +138,28 @@ let webpackConfig = {
 };
 
 webpackConfig.devServer = (devServerConfig) => {
+  // Base44 sandbox only (BASE44_PREVIEW_MODE=1): the preview reaches the dev server
+  // through a proxy, on an https origin, under a rotating sandbox hostname.
+  // The api is served from the same origin as the page so the httpOnly session
+  // cookies are first-party; both settings are inert outside the sandbox.
+  if (process.env.BASE44_PREVIEW_MODE === "1") {
+    if (process.env.API_PROXY_TARGET) {
+      devServerConfig.proxy = [
+        ...(Array.isArray(devServerConfig.proxy) ? devServerConfig.proxy : []),
+        { context: ["/api"], target: process.env.API_PROXY_TARGET, changeOrigin: true },
+      ];
+    }
+    if (process.env.BASE44_SANDBOX_HOST_DOMAIN) {
+      const allowedHosts = Array.isArray(devServerConfig.allowedHosts)
+        ? devServerConfig.allowedHosts
+        : [];
+      devServerConfig.allowedHosts = [
+        ...allowedHosts,
+        `.${process.env.BASE44_SANDBOX_HOST_DOMAIN}`,
+      ];
+    }
+  }
+
   // Add health check endpoints if enabled
   if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {
     const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
